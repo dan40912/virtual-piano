@@ -145,22 +145,7 @@ nav i,
 main {
   max-width: 1368px;
   margin: auto;
-  padding: 39px 38px 0;
-}
-.intro {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 27px;
-}
-.eyebrow {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
-  color: var(--gold);
-  display: flex;
-  align-items: center;
-  gap: 7px;
+  padding: 16px 38px 0;
 }
 .eyebrow span,
 .led,
@@ -170,31 +155,6 @@ main {
   border-radius: 50%;
   background: #aebc96;
   display: inline-block;
-}
-.eyebrow span {
-  background: var(--gold);
-  width: 4px;
-  height: 4px;
-}
-h1 {
-  font-size: 30px;
-  letter-spacing: 2px;
-  font-weight: 500;
-  margin: 10px 0 8px;
-}
-.intro p {
-  font-size: 12px;
-  color: var(--muted);
-  letter-spacing: 0.8px;
-  margin: 0;
-}
-.sound-status {
-  border: 1px solid var(--line);
-  font-size: 10px;
-  color: #afb7aa;
-  padding: 10px 12px;
-  border-radius: 20px;
-  gap: 9px;
 }
 .off {
   background: var(--gold);
@@ -281,8 +241,7 @@ h1 {
 .mobile-layout-switch,
 .mobile-track-sheet-heading,
 .mobile-score-splitter,
-.immersive-exit,
-.ios-home-hint {
+.immersive-exit {
   display: none;
 }
 .studio-top {
@@ -1501,10 +1460,6 @@ footer > span:first-child {
   font-size: 10px;
   color: var(--muted);
 }
-.app .intro {
-  margin-bottom: 23px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .lid-cover {
     transform: none !important;
@@ -2113,21 +2068,6 @@ footer > span:first-child {
   }
   main {
     padding: 25px 12px 0;
-  }
-  .intro {
-    display: block;
-    margin-bottom: 18px;
-  }
-  h1 {
-    font-size: 24px;
-    letter-spacing: 1px;
-  }
-  .intro p {
-    font-size: 11px;
-  }
-  .sound-status {
-    margin-top: 15px;
-    padding: 7px 11px;
   }
   .import-box {
     padding: 10px;
@@ -2842,9 +2782,6 @@ footer > span:first-child {
   .studio[data-mobile-layout="play"] .piano-key.black {
     height: 62%;
   }
-  main:has(.studio[data-mobile-layout="play"]) > .intro {
-    display: none;
-  }
   .piano-lid.is-open .lid-tray {
     position: fixed;
     inset: auto 0 0;
@@ -2938,9 +2875,6 @@ footer > span:first-child {
   main {
     padding: 4px max(10px, env(safe-area-inset-left)) 0;
   }
-  main > .intro {
-    display: none;
-  }
   .studio {
     gap: 4px;
   }
@@ -2979,13 +2913,7 @@ footer > span:first-child {
   }
 }
 
-.ios-home-hint.is-ios {
-  display: block;
-  color: #8d9586;
-  font-size: 10px;
-}
-.immersive-mode header,
-.immersive-mode main > .intro {
+.immersive-mode header {
   display: none;
 }
 .immersive-mode main {

@@ -772,32 +772,6 @@ export default function App() {
         返回工作室
       </button>
       <main>
-        <div className="intro">
-          <div>
-            <div className="eyebrow">
-              <span /> THE JOY OF PLAYING
-            </div>
-            <h1>讓每個音符，自然流動。</h1>
-            <p>從一個琴鍵開始，找到屬於你的旋律。</p>
-            <p className={`ios-home-hint ${isIOS ? "is-ios" : ""}`}>
-              iPhone：在 Safari 分享選單選「加入主畫面」，播放時可隱藏網址列。
-            </p>
-          </div>
-          <button
-            className="sound-status"
-            onClick={() =>
-              void engine.ready().catch((e) => setStatus(e.message))
-            }
-          >
-            <span className={audio.includes("就緒") ? "led" : "led off"} />
-            {audio.includes("就緒")
-              ? "Grand Piano · 已就緒"
-              : audio === "尚未啟動"
-                ? "Grand Piano · 點擊啟動"
-                : audio}
-            <Headphones size={14} />
-          </button>
-        </div>
         <section
           className="studio"
           data-mobile-layout={settings.mobileLayout}
