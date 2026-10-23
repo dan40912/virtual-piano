@@ -2,7 +2,7 @@
 
 ## 自動化
 
-執行 `npm test`：46 項測試，涵蓋：
+執行 `npx vitest run --exclude "site-publish/**"`：54 項測試，涵蓋：
 
 - 88 鍵音域與黑白鍵數量、預設半音配置。
 - 真實 React 元件掛載、音域位置 effects、多指 Pointer Down/Up/Cancel 事件獨立處理。
@@ -79,3 +79,31 @@
 - 新增 PDF / 圖片譜架，MusicXML 交給既有記譜器；切換視圖時保留本次放上的琴譜。
 - MIDI 放置區實際匯入 e0637_i.mid，成功解析 241 個音符。
 - 新增圖片移除與 URL 回收、PDF 嵌入、MusicXML 委派、檔案格式拒絕測試；共 49 項測試通過，production build 通過。
+
+## Mobile-First 改版驗收（2026-10-23）
+
+### 自動化與正式建置
+
+- `npx tsc --noEmit` 通過。
+- `npx vitest run --exclude "site-publish/**"`：10 個測試檔、54 項測試全數通過。
+- `npm run build` 通過。初始主 JS chunk 614.42 kB（gzip 173.69 kB）；P1 改版建置紀錄為 647.45 kB（gzip 183.50 kB），gzip 初始載入減少約 5.3%。MIDI parser、錄製工具及琴譜架採延遲載入；OSMD chunk 仍為 1,229.11 kB（gzip 324.55 kB），Vite 仍提示大型 chunk。
+- React Profiler 回歸測試確認播放位置更新不會讓 `Piano` 每幀重新渲染。手動音符使用 `Tone.immediate()`；開發模式有 pointerdown 到 attack 的耗時及音訊 context 延遲記錄，但本次沒有量到實際輸出延遲數值。
+
+### 瀏覽器視窗尺寸檢查
+
+在本機 Codex 內建 Chromium 使用 viewport override 檢查，`documentElement.scrollWidth` 均未大於 `clientWidth`：
+
+| 類別 | 尺寸 | 結果 |
+| --- | --- | --- |
+| 手機直向 | 320×844、375×812、390×844、430×932 | 無頁面水平溢出；可視白鍵約 9、10、10、10 顆 |
+| 手機橫向 | 667×375、844×390、932×430 | 無頁面水平溢出；可視白鍵約 11 顆 |
+| 平板／桌機 | 768×1024、820×1180、1024×768、1180×820、1440×900 | 無頁面水平溢出；768px 以上直向版面未觸發手機版 media query |
+
+以上是桌面 Chromium 的視窗尺寸模擬，不代表觸控、音訊或實機瀏覽器已通過。手機直向的看譜版面可見曲譜、播放列與鍵盤；和弦快捷鍵仍在眼前，進階和弦與播放控制可展開。
+
+### 尚待實機與人工確認
+
+- 尚未用 iOS Safari、Android Chrome 實機測試；本次 viewport override 不模擬觸控裝置能力，也沒有驗證真實雙指／三指按鍵、快速連打、卡音或裝置旋轉時不中斷播放。
+- 尚未以實機音訊裝置量測輸出延遲，也未用 240 fps 影片測量觸控至出聲時間；base/output latency 會在開發模式由實際 AudioContext 記錄。
+- 未做改版前後 1440px 截圖像素比對。桌機控制列依本次 UI 簡化要求，預設收起重播、停止、循環、轉調、音量、節拍器及延音；「更多」可展開這些既有功能。
+- 尚未驗證 iPhone 加入主畫面後的 standalone 顯示、safe-area、全螢幕替代方案；GitHub Pages 發布後的 HTTPS 端到端驗收也尚未執行。
