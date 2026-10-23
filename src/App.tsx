@@ -107,7 +107,7 @@ export default function App() {
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const [lidOpen, setLidOpen] = useState(false);
   const [lidTab, setLidTab] = useState("import");
-  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [moreControlsOpen, setMoreControlsOpen] = useState(false);
   const [immersive, setImmersive] = useState(false);
   const [scorePaperRequested, setScorePaperRequested] = useState(false);
   const [recordingRequested, setRecordingRequested] = useState(false);
@@ -1284,16 +1284,18 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div className={`player ${mobileMoreOpen ? "mobile-more-open" : ""}`}>
-            <div className="mobile-playback-heading">
+          <div
+            className={`player ${moreControlsOpen ? "more-controls-open" : ""}`}
+          >
+            <div className="playback-heading">
               <strong>{song?.title || "自由演奏"}</strong>
               <button
                 type="button"
-                className="mobile-more-toggle"
-                aria-expanded={mobileMoreOpen}
-                onClick={() => setMobileMoreOpen((open) => !open)}
+                className="player-more-toggle"
+                aria-expanded={moreControlsOpen}
+                onClick={() => setMoreControlsOpen((open) => !open)}
               >
-                <Settings2 size={15} /> {mobileMoreOpen ? "收起更多" : "更多"}
+                <Settings2 size={15} /> {moreControlsOpen ? "收起更多" : "更多"}
               </button>
             </div>
             <PlaybackProgress duration={song?.duration || 0} onSeek={seek} />

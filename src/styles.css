@@ -279,8 +279,6 @@ h1 {
 }
 .mobile-track-button,
 .mobile-layout-switch,
-.mobile-playback-heading,
-.mobile-more-toggle,
 .mobile-track-sheet-heading,
 .mobile-score-splitter,
 .immersive-exit,
@@ -640,6 +638,51 @@ h2 {
   padding: 16px 23px 15px;
   border-top: 1px solid #ffffff08;
   background: linear-gradient(#23262080, #1c1f1b);
+}
+.playback-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  margin-bottom: 5px;
+}
+.playback-heading > strong {
+  overflow: hidden;
+  color: #e4d8b6;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.player-more-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-color: #3c4036;
+  color: #c7bb98;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.player:not(.more-controls-open) .transport button[title="重播"],
+.player:not(.more-controls-open) .transport button[title="停止"],
+.player:not(.more-controls-open) .transport button[title="循環"],
+.player:not(.more-controls-open) .transport > .separator,
+.player:not(.more-controls-open) .playback-settings label:not(:first-child),
+.player:not(.more-controls-open) .playback-settings .separator,
+.player:not(.more-controls-open) .playback-settings > svg,
+.player:not(.more-controls-open) .playback-settings > input,
+.player:not(.more-controls-open) .playback-settings > span,
+.player:not(.more-controls-open) .toggles,
+.player:not(.more-controls-open) .loop-fields {
+  display: none;
+}
+.player.more-controls-open .toggles,
+.player.more-controls-open .loop-fields {
+  display: flex;
 }
 .timeline {
   display: flex;
@@ -2655,7 +2698,7 @@ footer > span:first-child {
     border: 1px solid #343831;
     border-radius: 8px;
   }
-  .mobile-playback-heading {
+  .playback-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -2663,7 +2706,7 @@ footer > span:first-child {
     min-width: 0;
     margin-bottom: 3px;
   }
-  .mobile-playback-heading > strong {
+  .playback-heading > strong {
     overflow: hidden;
     color: #e4d8b6;
     font-size: 11px;
@@ -2671,7 +2714,7 @@ footer > span:first-child {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .mobile-more-toggle {
+  .player-more-toggle {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -2718,21 +2761,6 @@ footer > span:first-child {
   }
   .playback-settings input {
     min-height: 36px;
-  }
-  .player:not(.mobile-more-open) .playback-settings label:not(:first-child),
-  .player:not(.mobile-more-open) .playback-settings .separator,
-  .player:not(.mobile-more-open) .playback-settings > svg,
-  .player:not(.mobile-more-open) .playback-settings > input,
-  .player:not(.mobile-more-open) .playback-settings > span,
-  .player:not(.mobile-more-open) .toggles,
-  .player:not(.mobile-more-open) .loop-fields {
-    display: none;
-  }
-  .player.mobile-more-open .toggles {
-    display: flex;
-  }
-  .player.mobile-more-open .loop-fields {
-    display: flex;
   }
   .mode-row {
     grid-area: modes;
