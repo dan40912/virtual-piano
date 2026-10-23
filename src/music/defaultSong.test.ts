@@ -2,11 +2,11 @@ import { it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { defaultSong } from "./defaultSong";
 import { parseMidi } from "./importers";
-it("uses the supplied default MIDI with exact source notes, timing, tempo and meter", () => {
+it("uses the supplied default MIDI with exact source notes, timing, tempo and meter", async () => {
   const bytes = readFileSync(
     new URL("../../public/music/e0637_i.mid", import.meta.url),
   );
-  const song = parseMidi(
+  const song = await parseMidi(
     bytes.buffer.slice(
       bytes.byteOffset,
       bytes.byteOffset + bytes.byteLength,

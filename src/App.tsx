@@ -1,7 +1,5 @@
-import { ScorePaper } from "./components/ScorePaper";
 import { PianoLid } from "./components/PianoLid";
 import { defaultSong } from "./music/defaultSong";
-import { RecordingControls } from "./components/RecordingControls";
 import { recorder } from "./audio/LiveRecorder";
 import { InstrumentControls } from "./components/InstrumentControls";
 import {
@@ -12,10 +10,13 @@ import {
 import {
   useCallback,
   useEffect,
+  lazy,
   useMemo,
   useRef,
   useState,
+  Suspense,
   useSyncExternalStore,
+  type CSSProperties,
 } from "react";
 import { ChordPanel } from "./components/ChordPanel";
 import { Piano } from "./components/Piano";
@@ -63,6 +64,12 @@ const clock = (s: number) =>
   `${Math.floor(s / 60)}:${Math.floor(s % 60)
     .toString()
     .padStart(2, "0")}`;
+const LazyScorePaper = lazy(async () => ({
+  default: (await import("./components/ScorePaper")).ScorePaper,
+}));
+const LazyRecordingControls = lazy(async () => ({
+  default: (await import("./components/RecordingControls")).RecordingControls,
+}));
 
 function PlaybackProgress({
   duration,
@@ -95,9 +102,21 @@ function PlaybackProgress({
 
 export default function App() {
   const settings = useSettings();
+  const isIOS =
+    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const [lidOpen, setLidOpen] = useState(false);
   const [lidTab, setLidTab] = useState("import");
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [immersive, setImmersive] = useState(false);
+  const [scorePaperRequested, setScorePaperRequested] = useState(false);
+  const [recordingRequested, setRecordingRequested] = useState(false);
+  const [splitRatio, setSplitRatio] = useState(settings.mobileScoreSplit);
+  const splitDrag = useRef<{
+    pointerId: number;
+    startY: number;
+    startRatio: number;
+  } | null>(null);
   useEffect(() => {
     useSettings.getState().set({ theme: "dark" });
   }, []);
@@ -167,6 +186,9 @@ export default function App() {
         : [],
     [song, muted, transpose],
   );
+  useEffect(() => {
+    setSplitRatio(settings.mobileScoreSplit);
+  }, [settings.mobileScoreSplit]);
   const expected =
     mode === "practice" && practiceType === "wait"
       ? (groupList[step] || []).map((n) => n.midi + transpose)
@@ -576,7 +598,7 @@ export default function App() {
       load(
         /\.(xml|musicxml)$/i.test(f.name)
           ? parseXml(await f.text(), f.name)
-          : parseMidi(await f.arrayBuffer(), f.name),
+          : await parseMidi(await f.arrayBuffer(), f.name),
       );
     } catch (e) {
       setStatus("匯入失敗：" + (e as Error).message);
@@ -662,7 +684,7 @@ export default function App() {
     : 100;
   return (
     <div
-      className="app"
+      className={`app ${immersive ? "immersive-mode" : ""}`}
       onPointerDownCapture={primeAudio}
       onKeyDownCapture={primeAudio}
       onDragOver={(e) => e.preventDefault()}
@@ -717,17 +739,38 @@ export default function App() {
           <button
             aria-label="全螢幕"
             onClick={() => {
-              if (document.fullscreenElement) void document.exitFullscreen();
-              else
-                void document.documentElement
-                  .requestFullscreen()
-                  .catch(() => setStatus("此瀏覽器不支援全螢幕"));
+              if (immersive) {
+                setImmersive(false);
+                return;
+              }
+              if (document.fullscreenElement) {
+                void document.exitFullscreen();
+                return;
+              }
+              if (isIOS || !document.documentElement.requestFullscreen) {
+                setImmersive(true);
+                setStatus(
+                  "已進入沉浸版面。iPhone 可在 Safari 分享選單中選擇「加入主畫面」，隱藏網址列。",
+                );
+                return;
+              }
+              void document.documentElement
+                .requestFullscreen()
+                .catch(() => setImmersive(true));
             }}
           >
             <Maximize2 size={17} />
           </button>
         </nav>
       </header>
+      <button
+        type="button"
+        className="immersive-exit"
+        aria-label="結束沉浸版面"
+        onClick={() => setImmersive(false)}
+      >
+        返回工作室
+      </button>
       <main>
         <div className="intro">
           <div>
@@ -736,6 +779,9 @@ export default function App() {
             </div>
             <h1>讓每個音符，自然流動。</h1>
             <p>從一個琴鍵開始，找到屬於你的旋律。</p>
+            <p className={`ios-home-hint ${isIOS ? "is-ios" : ""}`}>
+              iPhone：在 Safari 分享選單選「加入主畫面」，播放時可隱藏網址列。
+            </p>
           </div>
           <button
             className="sound-status"
@@ -752,7 +798,16 @@ export default function App() {
             <Headphones size={14} />
           </button>
         </div>
-        <section className="studio" data-mobile-layout={settings.mobileLayout}>
+        <section
+          className="studio"
+          data-mobile-layout={settings.mobileLayout}
+          style={
+            {
+              "--mobile-score-height": `${splitRatio * 100}dvh`,
+              "--mobile-piano-height": `${(1 - splitRatio) * 100}dvh`,
+            } as CSSProperties
+          }
+        >
           <div
             className="mobile-layout-switch"
             role="group"
@@ -785,7 +840,10 @@ export default function App() {
             open={lidOpen}
             onToggle={() => setLidOpen((v) => !v)}
             activeTab={lidTab}
-            onTabChange={setLidTab}
+            onTabChange={(id) => {
+              if (id === "record") setRecordingRequested(true);
+              setLidTab(id);
+            }}
             tabs={[
               {
                 id: "import",
@@ -827,7 +885,10 @@ export default function App() {
                         <div className="segmented">
                           <button
                             className={view === "score" ? "selected" : ""}
-                            onClick={() => setView("score")}
+                            onClick={() => {
+                              setScorePaperRequested(true);
+                              setView("score");
+                            }}
                           >
                             琴譜
                           </button>
@@ -850,12 +911,20 @@ export default function App() {
                           hidden={view !== "score"}
                           className="score-paper-host"
                         >
-                          <ScorePaper
-                            onXml={async (f) => {
-                              await importFile(f);
-                              setView("sheet");
-                            }}
-                          />
+                          <Suspense
+                            fallback={
+                              <p className="score-loading">正在載入琴譜架…</p>
+                            }
+                          >
+                            {scorePaperRequested && (
+                              <LazyScorePaper
+                                onXml={async (f) => {
+                                  await importFile(f);
+                                  setView("sheet");
+                                }}
+                              />
+                            )}
+                          </Suspense>
                         </div>
                         {view === "score" ? null : view === "roll" ? (
                           <>
@@ -1054,7 +1123,15 @@ export default function App() {
               {
                 id: "record",
                 label: "我的錄製",
-                content: <RecordingControls onLoad={load} />,
+                content: recordingRequested ? (
+                  <Suspense
+                    fallback={
+                      <p className="score-loading">正在載入錄製工具…</p>
+                    }
+                  >
+                    <LazyRecordingControls onLoad={load} />
+                  </Suspense>
+                ) : null,
               },
               {
                 id: "menu",
@@ -1407,6 +1484,73 @@ export default function App() {
             <button onClick={() => setPanel("tracks")}>
               <SlidersHorizontal size={15} /> 音軌
             </button>
+          </div>
+          <div
+            className="mobile-score-splitter"
+            role="separator"
+            aria-label="調整曲譜與鋼琴的顯示比例"
+            aria-orientation="horizontal"
+            aria-valuemin={25}
+            aria-valuemax={65}
+            aria-valuenow={Math.round(splitRatio * 100)}
+            tabIndex={0}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              splitDrag.current = {
+                pointerId: event.pointerId,
+                startY: event.clientY,
+                startRatio: splitRatio,
+              };
+              try {
+                event.currentTarget.setPointerCapture(event.pointerId);
+              } catch {
+                // Pointer events can still reach the divider in fallback mode.
+              }
+            }}
+            onPointerMove={(event) => {
+              const drag = splitDrag.current;
+              if (!drag || drag.pointerId !== event.pointerId) return;
+              const next = Math.max(
+                0.25,
+                Math.min(
+                  0.65,
+                  drag.startRatio +
+                    (event.clientY - drag.startY) / Math.max(320, innerHeight),
+                ),
+              );
+              setSplitRatio(next);
+            }}
+            onPointerUp={(event) => {
+              if (splitDrag.current?.pointerId !== event.pointerId) return;
+              splitDrag.current = null;
+              useSettings.getState().set({ mobileScoreSplit: splitRatio });
+            }}
+            onPointerCancel={(event) => {
+              if (splitDrag.current?.pointerId !== event.pointerId) return;
+              splitDrag.current = null;
+              useSettings.getState().set({ mobileScoreSplit: splitRatio });
+            }}
+            onLostPointerCapture={(event) => {
+              if (splitDrag.current?.pointerId !== event.pointerId) return;
+              splitDrag.current = null;
+              useSettings.getState().set({ mobileScoreSplit: splitRatio });
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                event.preventDefault();
+                const next = Math.max(
+                  0.25,
+                  Math.min(
+                    0.65,
+                    splitRatio + (event.key === "ArrowDown" ? 0.03 : -0.03),
+                  ),
+                );
+                setSplitRatio(next);
+                settings.set({ mobileScoreSplit: next });
+              }
+            }}
+          >
+            <span />
           </div>
           {mode === "accompaniment" && song && (
             <div className="accompaniment-panel" aria-label="自動伴奏音軌設定">

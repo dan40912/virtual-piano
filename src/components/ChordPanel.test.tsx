@@ -75,6 +75,11 @@ it("latch keeps chord after keyup, releases previous chord when switching, and t
 it("binding mode captures a physical key and persists the chord assignment", async () => {
   const buttons = () => Array.from(container.querySelectorAll("button"));
   await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>('[aria-controls="chord-settings"]')!
+      .click(),
+  );
+  await act(async () =>
     buttons()
       .find((b) => b.textContent === "綁定模式")!
       .click(),
@@ -103,4 +108,17 @@ it("rejects chord conflicts and reserved keys while keeping single-note mappings
   expect(
     validateChordBinding("KeyQ", aChordMap, "KeyZ", "Space", defaultMap),
   ).toBe("");
+});
+
+it("keeps chord pads visible and tucks advanced chord options behind settings", async () => {
+  const settings = container.querySelector<HTMLButtonElement>(
+    '[aria-controls="chord-settings"]',
+  )!;
+  expect(settings.getAttribute("aria-expanded")).toBe("false");
+  expect(container.querySelectorAll(".chord-pad").length).toBeGreaterThan(0);
+  expect(container.querySelector('[aria-label="和弦快速配置"]')).toBeNull();
+
+  await act(async () => settings.click());
+  expect(settings.getAttribute("aria-expanded")).toBe("true");
+  expect(container.querySelector('[aria-label="和弦快速配置"]')).not.toBeNull();
 });

@@ -31,7 +31,7 @@ describe("piano geometry and mapping", () => {
   });
 });
 describe("MIDI import", () => {
-  it("preserves polyphony, tempo changes, meter, tracks and CC64", () => {
+  it("preserves polyphony, tempo changes, meter, tracks and CC64", async () => {
     const midi = new Midi();
     midi.header.tempos = [
       { ticks: 0, bpm: 120 },
@@ -48,7 +48,7 @@ describe("MIDI import", () => {
     a.addCC({ number: 64, ticks: 0, value: 1 });
     a.addCC({ number: 64, ticks: 960, value: 0 });
     midi.addTrack().addNote({ midi: 48, ticks: 480, durationTicks: 480 });
-    const s = parseMidi(midi.toArray().buffer as ArrayBuffer, "test");
+    const s = await parseMidi(midi.toArray().buffer as ArrayBuffer, "test");
     expect(s.notes).toHaveLength(3);
     expect(s.tracks).toHaveLength(2);
     expect(s.tempos).toHaveLength(2);
@@ -57,11 +57,11 @@ describe("MIDI import", () => {
     expect(s.pedals.map((p) => p.down)).toEqual([true, false]);
     expect(s.notes[0].velocity).toBeCloseTo(0.8, 1);
   });
-  it("rejects malformed and empty MIDI", () => {
-    expect(() => parseMidi(new ArrayBuffer(2), "bad")).toThrow();
-    expect(() =>
+  it("rejects malformed and empty MIDI", async () => {
+    await expect(parseMidi(new ArrayBuffer(2), "bad")).rejects.toThrow();
+    await expect(
       parseMidi(new Midi().toArray().buffer as ArrayBuffer, "empty"),
-    ).toThrow();
+    ).rejects.toThrow();
   });
 });
 describe("hymnal validation", () => {

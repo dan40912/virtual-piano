@@ -1,4 +1,3 @@
-import { Midi } from "@tonejs/midi";
 import type { Song, Note } from "./model";
 export function importedTitle(name: string, fallback: string) {
   if (/steinway\s+piano\s+stage/i.test(name)) {
@@ -8,7 +7,11 @@ export function importedTitle(name: string, fallback: string) {
   }
   return name || fallback;
 }
-export function parseMidi(data: ArrayBuffer, title: string): Song {
+export async function parseMidi(
+  data: ArrayBuffer,
+  title: string,
+): Promise<Song> {
+  const { Midi } = await import("@tonejs/midi");
   const m = new Midi(data);
   const notes: Note[] = m.tracks.flatMap((t, i) =>
     t.notes.map((n, j) => ({
@@ -90,6 +93,6 @@ export async function importHymnal(raw: string): Promise<Song> {
     credentials: "omit",
   });
   if (!mr.ok) throw Error("MIDI 下載失敗");
-  const song = parseMidi(await mr.arrayBuffer(), doc.title);
+  const song = await parseMidi(await mr.arrayBuffer(), doc.title);
   return { ...song, source: u.href };
 }

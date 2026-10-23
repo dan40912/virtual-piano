@@ -19,6 +19,7 @@ interface Settings {
   keyCount: number;
   octave: number;
   mobileLayout: "auto" | "play" | "score";
+  mobileScoreSplit: number;
   set: (s: Partial<Settings>) => void;
 }
 export const useSettings = create<Settings>()(
@@ -38,6 +39,7 @@ export const useSettings = create<Settings>()(
       keyCount: 61,
       octave: 0,
       mobileLayout: "auto",
+      mobileScoreSplit: 0.38,
       set: (s) => set(s),
     }),
     {
@@ -55,6 +57,12 @@ export const useSettings = create<Settings>()(
             old.mobileLayout === "play" || old.mobileLayout === "score"
               ? old.mobileLayout
               : "auto",
+          mobileScoreSplit:
+            typeof old.mobileScoreSplit === "number" &&
+            old.mobileScoreSplit >= 0.25 &&
+            old.mobileScoreSplit <= 0.65
+              ? old.mobileScoreSplit
+              : 0.38,
         } as Settings;
       },
     },

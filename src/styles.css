@@ -281,7 +281,10 @@ h1 {
 .mobile-layout-switch,
 .mobile-playback-heading,
 .mobile-more-toggle,
-.mobile-track-sheet-heading {
+.mobile-track-sheet-heading,
+.mobile-score-splitter,
+.immersive-exit,
+.ios-home-hint {
   display: none;
 }
 .studio-top {
@@ -1040,6 +1043,19 @@ footer > span:first-child {
 .chord-presets button {
   border-color: var(--line);
   font-size: 11px;
+}
+.chord-heading > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 7px 10px;
+}
+.chord-settings-chevron {
+  transition: transform 160ms ease;
+}
+.chord-settings-chevron.is-open {
+  transform: rotate(180deg);
 }
 .chord-heading label,
 .chord-presets label {
@@ -2453,6 +2469,7 @@ footer > span:first-child {
       "score"
       "player"
       "modes"
+      "splitter"
       "piano"
       "tools"
       "chords"
@@ -2572,7 +2589,7 @@ footer > span:first-child {
     flex: 0 0 auto;
   }
   .music-desk .visual-area {
-    height: clamp(150px, 28dvh, 230px);
+    height: clamp(140px, var(--mobile-score-height, 36dvh), 70dvh);
   }
   .music-desk .sheet {
     height: 100%;
@@ -2598,7 +2615,7 @@ footer > span:first-child {
     top: 25px;
   }
   .keys {
-    height: clamp(150px, 30dvh, 230px);
+    height: clamp(160px, var(--mobile-piano-height, 42dvh), 58dvh);
   }
   .piano-key.white {
     height: calc(100% - 8px);
@@ -2747,6 +2764,26 @@ footer > span:first-child {
   .chord-panel {
     grid-area: chords;
   }
+  .mobile-score-splitter {
+    grid-area: splitter;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    touch-action: none;
+    cursor: row-resize;
+  }
+  .mobile-score-splitter > span {
+    width: 64px;
+    height: 4px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #75633d, #e0ca8e, #75633d);
+    box-shadow: 0 1px 6px #c9b78833;
+  }
+  .mobile-score-splitter:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: -2px;
+  }
   .accompaniment-panel {
     grid-area: accompaniment;
   }
@@ -2757,11 +2794,15 @@ footer > span:first-child {
       "tools"
       "player"
       "modes"
+      "splitter"
       "chords"
       "accompaniment"
       "score";
   }
   .studio[data-mobile-layout="play"] .music-desk {
+    display: none;
+  }
+  .studio[data-mobile-layout="play"] .mobile-score-splitter {
     display: none;
   }
   .studio[data-mobile-layout="play"] .piano-housing {
@@ -2882,11 +2923,15 @@ footer > span:first-child {
       "tools"
       "player"
       "modes"
+      "splitter"
       "chords"
       "accompaniment"
       "score";
   }
   .studio[data-mobile-layout="auto"] .music-desk {
+    display: none;
+  }
+  .studio[data-mobile-layout="auto"] .mobile-score-splitter {
     display: none;
   }
   .studio[data-mobile-layout="auto"] .keys,
@@ -2898,12 +2943,42 @@ footer > span:first-child {
     min-height: min(66dvh, 360px);
   }
   .studio[data-mobile-layout="score"] .music-desk .visual-area {
-    height: clamp(125px, 31dvh, 170px);
+    height: clamp(120px, var(--mobile-score-height, 36dvh), 48dvh);
   }
   .player {
     padding-top: 5px;
     padding-bottom: calc(6px + env(safe-area-inset-bottom));
   }
+}
+
+.ios-home-hint.is-ios {
+  display: block;
+  color: #8d9586;
+  font-size: 10px;
+}
+.immersive-mode header,
+.immersive-mode main > .intro {
+  display: none;
+}
+.immersive-mode main {
+  padding-top: max(6px, env(safe-area-inset-top));
+}
+.immersive-exit {
+  display: none;
+}
+.immersive-mode .immersive-exit {
+  position: fixed;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  z-index: 1200;
+  display: inline-flex;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid #a58f5d;
+  border-radius: 24px;
+  background: #11150fe8;
+  color: #e2d09c;
+  box-shadow: 0 4px 18px #0008;
 }
 
 @media (hover: none) and (pointer: coarse) {

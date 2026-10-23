@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Settings2 } from "lucide-react";
 import { useSettings } from "../store";
 import {
   aChordMap,
@@ -22,7 +23,8 @@ export function ChordPanel({
   const s = useSettings();
   const [edit, setEdit] = useState(false),
     [binding, setBinding] = useState<string | null>(null),
-    [message, setMessage] = useState("按一個鍵，整組和弦自動彈出。"),
+    [settingsOpen, setSettingsOpen] = useState(false),
+    [message, setMessage] = useState("可用滑鼠、觸控或鍵盤演奏和弦。"),
     [held, setHeld] = useState<string[]>([]);
   const downRef = useRef(onDown),
     upRef = useRef(onUp);
@@ -142,7 +144,7 @@ export function ChordPanel({
           <h3>
             一鍵和弦 <span className="tag">EASY PLAY</span>
           </h3>
-          <p>左手只按一個鍵，自動彈出低音與和弦；右手仍可用 A–L 彈旋律。</p>
+          <p>點選和弦按鈕演奏；進階選項收在設定中。</p>
         </div>
         <label>
           <input
@@ -150,59 +152,80 @@ export function ChordPanel({
             checked={s.chordEnabled}
             onChange={(e) => s.set({ chordEnabled: e.target.checked })}
           />
-          和弦快捷鍵優先
+          啟用
         </label>
         <button
-          className={edit ? "enabled" : ""}
-          onClick={() => {
-            setEdit(!edit);
-            setBinding(null);
-            setMessage("選擇和弦後按「改綁按鍵」，再按你習慣的字母或數字。");
-          }}
+          type="button"
+          aria-expanded={settingsOpen}
+          aria-controls="chord-settings"
+          onClick={() => setSettingsOpen((open) => !open)}
         >
-          {edit ? "完成綁定" : "綁定模式"}
+          <Settings2 size={14} />
+          和弦設定
+          <ChevronDown
+            size={14}
+            className={
+              settingsOpen
+                ? "chord-settings-chevron is-open"
+                : "chord-settings-chevron"
+            }
+          />
         </button>
       </div>
-      <div className="chord-presets">
-        <label>
-          快速配置{" "}
-          <select
-            aria-label="和弦快速配置"
-            value={
-              JSON.stringify(s.chordMapping) === JSON.stringify(aChordMap)
-                ? "A"
-                : JSON.stringify(s.chordMapping) === JSON.stringify(cChordMap)
-                  ? "C"
-                  : "custom"
-            }
-            onChange={(e) => {
-              s.set({
-                chordMapping:
-                  e.target.value === "A" ? { ...aChordMap } : { ...cChordMap },
-              });
+      {settingsOpen && (
+        <div className="chord-presets" id="chord-settings">
+          <label>
+            快速配置{" "}
+            <select
+              aria-label="和弦快速配置"
+              value={
+                JSON.stringify(s.chordMapping) === JSON.stringify(aChordMap)
+                  ? "A"
+                  : JSON.stringify(s.chordMapping) === JSON.stringify(cChordMap)
+                    ? "C"
+                    : "custom"
+              }
+              onChange={(e) => {
+                s.set({
+                  chordMapping:
+                    e.target.value === "A"
+                      ? { ...aChordMap }
+                      : { ...cChordMap },
+                });
+                setBinding(null);
+                setMessage(
+                  "已套用常用和弦配置；這是演奏工具，沒有推測歌曲的和弦時間。",
+                );
+              }}
+            >
+              <option value="custom" disabled>
+                自訂配置
+              </option>
+              <option value="A">A 調常用 · A / D / E7 / F♯m</option>
+              <option value="C">C 調入門 · C / Dm / F / G / Am</option>
+            </select>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={s.chordLatch}
+              onChange={(e) => s.set({ chordLatch: e.target.checked })}
+            />
+            一按保持，換和弦時自動放開
+          </label>
+          <button
+            className={edit ? "enabled" : ""}
+            onClick={() => {
+              setEdit(!edit);
               setBinding(null);
-              setMessage(
-                "已套用常用和弦配置；這是演奏工具，沒有推測歌曲的和弦時間。",
-              );
+              setMessage("選擇和弦後按「改綁按鍵」，再按你習慣的字母或數字。");
             }}
           >
-            <option value="custom" disabled>
-              自訂配置
-            </option>
-            <option value="A">A 調常用 · A / D / E7 / F♯m</option>
-            <option value="C">C 調入門 · C / Dm / F / G / Am</option>
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={s.chordLatch}
-            onChange={(e) => s.set({ chordLatch: e.target.checked })}
-          />
-          一按保持，換和弦時自動放開
-        </label>
-        <button onClick={() => api.current.allOff()}>停止和弦</button>
-      </div>
+            {edit ? "完成綁定" : "綁定模式"}
+          </button>
+          <button onClick={() => api.current.allOff()}>停止和弦</button>
+        </div>
+      )}
       <div className="chord-grid">
         {Object.entries(s.chordMapping).map(([code, chord]) => (
           <div
