@@ -125,7 +125,7 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1),
     [transpose, setTranspose] = useState(0),
-    [mode, setMode] = useState("practice"),
+    [mode, setMode] = useState("auto"),
     [practiceType, setPracticeType] = useState("rhythm"),
     [tolerance, setTolerance] = useState(0.2);
   const [muted, setMuted] = useState<number[]>([]),

@@ -235,7 +235,7 @@ main {
   border-radius: 11px;
   background: var(--surface);
   box-shadow: 0 12px 44px #0002;
-  overflow: hidden;
+  overflow: visible;
 }
 .mobile-track-button,
 .mobile-layout-switch,
@@ -594,9 +594,25 @@ h2 {
   align-items: center;
 }
 .player {
+  position: fixed;
+  z-index: 900;
+  left: 50%;
+  bottom: max(8px, env(safe-area-inset-bottom));
+  width: min(calc(100vw - 24px), 1292px);
+  max-height: calc(
+    100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
+  overflow-y: auto;
+  transform: translateX(-50%);
   padding: 16px 23px 15px;
-  border-top: 1px solid #ffffff08;
-  background: linear-gradient(#23262080, #1c1f1b);
+  border: 1px solid #746744;
+  border-radius: 12px;
+  background: linear-gradient(#232620f2, #1c1f1bf2);
+  box-shadow: 0 10px 35px #000b;
+  backdrop-filter: blur(18px);
+}
+.app {
+  padding-bottom: calc(190px + env(safe-area-inset-bottom));
 }
 .playback-heading {
   display: flex;
@@ -2438,7 +2454,7 @@ footer > span:first-child {
     padding-right: max(12px, env(safe-area-inset-right));
   }
   .player {
-    padding-bottom: calc(15px + env(safe-area-inset-bottom));
+    padding-bottom: 10px;
   }
   .piano-housing {
     padding-bottom: env(safe-area-inset-bottom);
@@ -2634,6 +2650,10 @@ footer > span:first-child {
   }
   .player {
     grid-area: player;
+    right: max(8px, env(safe-area-inset-right));
+    left: max(8px, env(safe-area-inset-left));
+    width: auto;
+    transform: none;
     padding: 9px 10px 12px;
     border: 1px solid #343831;
     border-radius: 8px;
