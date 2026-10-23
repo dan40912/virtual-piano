@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Song } from "../music/model";
 import { isBlack } from "../music/model";
 import { shortcutLabel } from "../music/keyboard";
+import { player } from "../audio/PlaybackScheduler";
 export function Roll({
   song,
-  position,
   transpose,
   count,
   zoom,
@@ -16,7 +16,6 @@ export function Roll({
   autoPolicy,
 }: {
   song: Song | null;
-  position: number;
   transpose: number;
   count: number;
   zoom: number;
@@ -28,6 +27,11 @@ export function Roll({
   autoPolicy?: Record<number, "all" | "bass" | "manual">;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const position = useSyncExternalStore(
+    player.subscribePosition,
+    player.getPositionSnapshot,
+    player.getPositionSnapshot,
+  );
   useEffect(() => {
     const canvas = ref.current!;
     const draw = () => {
@@ -163,7 +167,7 @@ export function Roll({
     />
   );
 }
-export function Sheet({ song, position }: { song: Song; position: number }) {
+export function Sheet({ song }: { song: Song }) {
   const ref = useRef<HTMLDivElement>(null);
   const display = useRef<
     import("opensheetmusicdisplay").OpenSheetMusicDisplay | null
@@ -171,6 +175,11 @@ export function Sheet({ song, position }: { song: Song; position: number }) {
   const timestamps = useRef<number[]>([]);
   const index = useRef(0);
   const [ready, setReady] = useState(false);
+  const position = useSyncExternalStore(
+    player.subscribePosition,
+    player.getPositionSnapshot,
+    player.getPositionSnapshot,
+  );
   useEffect(() => {
     let cancel = false;
     setReady(false);

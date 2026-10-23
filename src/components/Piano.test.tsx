@@ -50,6 +50,16 @@ it("mounts with scroll effects, renders 88 keys and supports independent pointer
     new PointerEvent("pointercancel", { bubbles: true, pointerId: 2 }),
   );
   expect(up.mock.calls).toEqual([["pointer1"], ["pointer2"]]);
+  c.dispatchEvent(
+    new PointerEvent("pointerdown", { bubbles: true, pointerId: 3 }),
+  );
+  c.dispatchEvent(
+    new PointerEvent("lostpointercapture", { bubbles: true, pointerId: 3 }),
+  );
+  c.dispatchEvent(
+    new PointerEvent("pointerup", { bubbles: true, pointerId: 3 }),
+  );
+  expect(up.mock.calls).toEqual([["pointer1"], ["pointer2"], ["pointer3"]]);
   await act(async () => root.unmount());
   container.remove();
 });

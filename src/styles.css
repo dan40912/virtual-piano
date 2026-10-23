@@ -984,233 +984,7 @@ footer > span:first-child {
     height: 130px;
   }
 }
-@media (max-width: 1050px) {
-  header {
-    padding: 0 25px;
-  }
-  main {
-    padding: 27px 20px 0;
-  }
-  .song-info p > span {
-    display: none;
-  }
-  .transport-row {
-    flex-wrap: wrap;
-  }
-  .playback-settings {
-    margin-left: auto;
-  }
-  .toggles {
-    margin-left: auto;
-  }
-  .mode-row > span {
-    display: none;
-  }
-  .key-hint {
-    display: none;
-  }
-  footer {
-    margin: 0 22px;
-  }
-  .below {
-    gap: 14px;
-  }
-  .below .shortcut {
-    display: none;
-  }
-}
-@media (max-width: 680px) {
-  header {
-    height: 73px;
-    padding: 0 17px;
-  }
-  .brand {
-    font-size: 14px;
-  }
-  .brand small {
-    font-size: 6px;
-    letter-spacing: 1.5px;
-  }
-  .brand-icon {
-    width: 33px;
-    height: 36px;
-  }
-  nav {
-    gap: 0;
-  }
-  nav button {
-    padding: 7px;
-  }
-  nav button span,
-  nav i {
-    display: none;
-  }
-  main {
-    padding: 25px 12px 0;
-  }
-  .intro {
-    display: block;
-    margin-bottom: 18px;
-  }
-  h1 {
-    font-size: 24px;
-    letter-spacing: 1px;
-  }
-  .intro p {
-    font-size: 11px;
-  }
-  .sound-status {
-    margin-top: 15px;
-    padding: 7px 11px;
-  }
-  .import-box {
-    padding: 10px;
-  }
-  .url-row {
-    gap: 7px;
-  }
-  .url-row input {
-    font-size: 10px;
-  }
-  .primary {
-    min-width: 85px;
-    padding: 10px;
-    font-size: 11px;
-  }
-  .url-row > svg {
-    display: none;
-  }
-  .local-badge {
-    display: none;
-  }
-  .import-actions button {
-    padding: 5px;
-    font-size: 9px;
-  }
-  .import-actions .separator {
-    margin: 0 2px;
-  }
-  .status {
-    font-size: 9px;
-  }
-  .studio-top {
-    padding: 0 12px;
-    height: 76px;
-    gap: 6px;
-  }
-  .music-square {
-    display: none;
-  }
-  h2 {
-    font-size: 12px;
-    gap: 5px;
-  }
-  .song-info p {
-    font-size: 9px;
-  }
-  .segmented button {
-    font-size: 9px;
-    padding: 5px;
-  }
-  .visual-area {
-    height: 170px;
-  }
-  .piano-housing {
-    padding: 0 8px;
-  }
-  .fallboard {
-    height: 48px;
-  }
-  .instrument-sub {
-    top: 33px;
-  }
-  .keys {
-    height: 177px;
-  }
-  .piano-key.white {
-    height: 165px;
-  }
-  .piano-key.black {
-    height: 105px;
-  }
-  .keyboard-tools {
-    padding: 0 9px;
-    font-size: 8px;
-  }
-  .keyboard-tools > div {
-    gap: 5px;
-  }
-  .keyboard-tools .separator {
-    display: none;
-  }
-  .keyboard-tools select {
-    font-size: 8px;
-    padding: 3px;
-  }
-  .player {
-    padding: 15px 12px;
-  }
-  .transport-row {
-    gap: 10px;
-  }
-  .transport {
-    margin: auto;
-  }
-  .playback-settings {
-    order: 3;
-    justify-content: center;
-    flex-wrap: wrap;
-    width: 100%;
-    gap: 9px;
-  }
-  .toggles {
-    margin: 0 auto;
-  }
-  .playback-settings input {
-    width: 65px;
-  }
-  .mode-row {
-    height: 57px;
-    padding: 0 8px;
-    gap: 3px;
-  }
-  .mode-switch {
-    gap: 0;
-  }
-  .mode-switch button {
-    font-size: 9px;
-    padding: 7px;
-  }
-  .mode-row > button {
-    font-size: 9px;
-    padding: 7px;
-  }
-  .below {
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 17px 2px 25px;
-    font-size: 8px;
-  }
-  footer {
-    margin: 0 15px;
-    flex-wrap: wrap;
-    gap: 14px;
-    font-size: 8px;
-  }
-  .mapping-grid {
-    grid-template-columns: repeat(7, 1fr);
-  }
-  .modal {
-    padding: 16px;
-  }
-  .profile {
-    flex-wrap: wrap;
-  }
-  .practice {
-    padding: 12px;
-    font-size: 10px;
-  }
-}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     scroll-behavior: auto !important;
@@ -1227,12 +1001,7 @@ footer > span:first-child {
   margin: 0 16px;
   width: calc(100% - 32px);
 }
-@media (max-width: 680px) {
-  .roll {
-    margin: 0 8px;
-    width: calc(100% - 16px);
-  }
-}
+
 .chord-panel {
   padding: 18px 23px;
   border-top: 1px solid var(--line);
@@ -1299,7 +1068,6 @@ footer > span:first-child {
   flex-direction: column;
   padding: 13px 4px;
   gap: 8px;
-  touch-action: none;
   user-select: none;
 }
 .chord-pad kbd,
@@ -1342,37 +1110,7 @@ footer > span:first-child {
   color: var(--gold);
   margin-bottom: 0;
 }
-@media (max-width: 680px) {
-  .chord-panel {
-    padding: 15px 12px;
-  }
-  .chord-heading {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .chord-heading > div {
-    min-width: 100%;
-  }
-  .chord-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 5px;
-  }
-  .chord-pad strong {
-    font-size: 18px;
-  }
-  .chord-pad small {
-    font-size: 7px;
-  }
-  .chord-presets {
-    gap: 9px;
-  }
-  .chord-presets label {
-    flex-wrap: wrap;
-  }
-  .chord-heading p {
-    font-size: 10px;
-  }
-}
+
 .instrument-controls {
   margin-bottom: 23px;
   border: 1px solid var(--line);
@@ -1439,28 +1177,7 @@ footer > span:first-child {
 .key-binding {
   font-size: 8px;
 }
-@media (max-width: 680px) {
-  .instrument-controls {
-    padding: 15px 12px;
-  }
-  .instrument-controls-top {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-  .instrument-controls-top h2 {
-    font-size: 17px;
-  }
-  .voice-choices {
-    grid-template-columns: repeat(2, 1fr);
-    margin-top: 15px;
-  }
-  .voice-choices button {
-    padding: 11px;
-  }
-  .voice-choices strong {
-    font-size: 15px;
-  }
-}
+
 .recording-controls {
   display: flex;
   gap: 10px;
@@ -1721,71 +1438,7 @@ footer > span:first-child {
 .app .intro {
   margin-bottom: 23px;
 }
-@media (max-width: 680px) {
-  .lid-cover {
-    min-height: 108px;
-    padding: 22px 12px 26px;
-  }
-  .lid-emblem {
-    font-size: 11px;
-    letter-spacing: 3px;
-  }
-  .lid-invitation {
-    font-size: 9px;
-    letter-spacing: 0;
-    gap: 6px;
-  }
-  .lid-tray-inner {
-    padding: 13px 10px 15px;
-  }
-  .lid-tabs {
-    gap: 2px;
-    overflow-x: auto;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-  }
-  .lid-tabs button {
-    font-size: 10px;
-    padding: 7px 9px;
-    min-height: 40px;
-    flex: 1;
-  }
-  .lid-menu-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 7px;
-  }
-  .lid-menu-grid button {
-    padding: 13px;
-    gap: 7px;
-  }
-  .lid-menu-grid strong {
-    font-size: 11px;
-  }
-  .lid-menu-grid span {
-    font-size: 9px;
-  }
-  .lid-function-menu h3 {
-    font-size: 16px;
-  }
-  .lid-function-menu p {
-    font-size: 10px;
-  }
-  .lid-hinges i {
-    width: 30px;
-  }
-  .lid-tray .import-actions {
-    flex-wrap: wrap;
-  }
-  .lid-tray .url-row {
-    flex-wrap: wrap;
-  }
-  .lid-tray .url-row input {
-    flex-basis: calc(100% - 100px);
-  }
-  .lid-cover {
-    will-change: auto;
-  }
-}
+
 @media (prefers-reduced-motion: reduce) {
   .lid-cover {
     transform: none !important;
@@ -2162,71 +1815,6 @@ footer > span:first-child {
 .grand-piano-lid .lid-function-menu {
   padding: 8px 0;
 }
-@media (max-width: 900px) {
-  .grand-workbench {
-    grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr);
-    gap: 14px;
-  }
-  .grand-piano-lid .lid-tray-inner {
-    padding-left: 15px;
-    padding-right: 15px;
-  }
-  .music-desk .song-info h2 {
-    font-size: 11px;
-  }
-  .music-desk .tag {
-    font-size: 6px;
-  }
-  .midi-desk h3 {
-    font-size: 14px;
-  }
-}
-@media (max-width: 620px) {
-  .grand-workbench {
-    grid-template-columns: 1fr;
-    gap: 25px;
-    padding: 4px 5px 8px;
-  }
-  .grand-piano-lid .lid-tray-inner {
-    padding: 0 11px 18px;
-  }
-  .grand-piano-lid .lid-tabs {
-    justify-content: initial;
-  }
-  .grand-piano-lid .lid-emblem {
-    font-size: 9px;
-    letter-spacing: 2px;
-  }
-  .grand-piano-lid .lid-invitation {
-    right: 15px;
-    font-size: 9px;
-  }
-  .music-desk .visual-area {
-    height: 270px;
-  }
-  .music-desk .studio-top {
-    flex-wrap: wrap;
-  }
-  .midi-desk {
-    padding: 0 2px;
-  }
-  .midi-drop-slot {
-    min-height: 125px;
-  }
-  .midi-desk .url-row input {
-    flex-basis: calc(100% - 95px);
-  }
-  .midi-desk .url-row > .primary {
-    width: 90px;
-    min-width: 90px;
-  }
-  .midi-desk .local-badge {
-    display: flex;
-  }
-  .place-score > strong {
-    font-size: 14px;
-  }
-}
 
 .score-paper-host {
   height: 100%;
@@ -2317,7 +1905,10 @@ footer > span:first-child {
   padding: 6px 9px;
   color: #9ca491;
   font-size: 10px;
-  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
 }
 .accompaniment-shortcuts button:hover,
 .accompaniment-options button:hover,
@@ -2373,7 +1964,418 @@ footer > span:first-child {
   align-items: center;
   gap: 6px;
 }
-@media (max-width: 700px) {
+
+/* Responsive device rules: tablet first, then phone. */
+@media (max-width: 1024px) {
+  header {
+    padding: 0 25px;
+  }
+  main {
+    padding: 27px 20px 0;
+  }
+  .song-info p > span {
+    display: none;
+  }
+  .transport-row {
+    flex-wrap: wrap;
+  }
+  .playback-settings {
+    margin-left: auto;
+  }
+  .toggles {
+    margin-left: auto;
+  }
+  .mode-row > span {
+    display: none;
+  }
+  .key-hint {
+    display: none;
+  }
+  footer {
+    margin: 0 22px;
+  }
+  .below {
+    gap: 14px;
+  }
+  .below .shortcut {
+    display: none;
+  }
+
+  .grand-workbench {
+    grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr);
+    gap: 14px;
+  }
+  .grand-piano-lid .lid-tray-inner {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+  .music-desk .song-info h2 {
+    font-size: 11px;
+  }
+  .music-desk .tag {
+    font-size: 6px;
+  }
+  .midi-desk h3 {
+    font-size: 14px;
+  }
+}
+@media (max-width: 767px) {
+  header {
+    height: 73px;
+    padding: 0 17px;
+  }
+  .brand {
+    font-size: 14px;
+  }
+  .brand small {
+    font-size: 6px;
+    letter-spacing: 1.5px;
+  }
+  .brand-icon {
+    width: 33px;
+    height: 36px;
+  }
+  nav {
+    gap: 0;
+  }
+  nav button {
+    padding: 7px;
+  }
+  nav button span,
+  nav i {
+    display: none;
+  }
+  main {
+    padding: 25px 12px 0;
+  }
+  .intro {
+    display: block;
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: 24px;
+    letter-spacing: 1px;
+  }
+  .intro p {
+    font-size: 11px;
+  }
+  .sound-status {
+    margin-top: 15px;
+    padding: 7px 11px;
+  }
+  .import-box {
+    padding: 10px;
+  }
+  .url-row {
+    gap: 7px;
+  }
+  .url-row input {
+    font-size: 10px;
+  }
+  .primary {
+    min-width: 85px;
+    padding: 10px;
+    font-size: 11px;
+  }
+  .url-row > svg {
+    display: none;
+  }
+  .local-badge {
+    display: none;
+  }
+  .import-actions button {
+    padding: 5px;
+    font-size: 9px;
+  }
+  .import-actions .separator {
+    margin: 0 2px;
+  }
+  .status {
+    font-size: 9px;
+  }
+  .studio-top {
+    padding: 0 12px;
+    height: 76px;
+    gap: 6px;
+  }
+  .music-square {
+    display: none;
+  }
+  h2 {
+    font-size: 12px;
+    gap: 5px;
+  }
+  .song-info p {
+    font-size: 9px;
+  }
+  .segmented button {
+    font-size: 9px;
+    padding: 5px;
+  }
+  .visual-area {
+    height: 170px;
+  }
+  .piano-housing {
+    padding: 0 8px;
+  }
+  .fallboard {
+    height: 48px;
+  }
+  .instrument-sub {
+    top: 33px;
+  }
+  .keys {
+    height: 177px;
+  }
+  .piano-key.white {
+    height: 165px;
+  }
+  .piano-key.black {
+    height: 105px;
+  }
+  .keyboard-tools {
+    padding: 0 9px;
+    font-size: 8px;
+  }
+  .keyboard-tools > div {
+    gap: 5px;
+  }
+  .keyboard-tools .separator {
+    display: none;
+  }
+  .keyboard-tools select {
+    font-size: 8px;
+    padding: 3px;
+  }
+  .player {
+    padding: 15px 12px;
+  }
+  .transport-row {
+    gap: 10px;
+  }
+  .transport {
+    margin: auto;
+  }
+  .playback-settings {
+    order: 3;
+    justify-content: center;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 9px;
+  }
+  .toggles {
+    margin: 0 auto;
+  }
+  .playback-settings input {
+    width: 65px;
+  }
+  .mode-row {
+    height: 57px;
+    padding: 0 8px;
+    gap: 3px;
+  }
+  .mode-switch {
+    gap: 0;
+  }
+  .mode-switch button {
+    font-size: 9px;
+    padding: 7px;
+  }
+  .mode-row > button {
+    font-size: 9px;
+    padding: 7px;
+  }
+  .below {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 17px 2px 25px;
+    font-size: 8px;
+  }
+  footer {
+    margin: 0 15px;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 8px;
+  }
+  .mapping-grid {
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .modal {
+    padding: 16px;
+  }
+  .profile {
+    flex-wrap: wrap;
+  }
+  .practice {
+    padding: 12px;
+    font-size: 10px;
+  }
+
+  .roll {
+    margin: 0 8px;
+    width: calc(100% - 16px);
+  }
+
+  .chord-panel {
+    padding: 15px 12px;
+  }
+  .chord-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .chord-heading > div {
+    min-width: 100%;
+  }
+  .chord-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .chord-pad strong {
+    font-size: 18px;
+  }
+  .chord-pad small {
+    font-size: 7px;
+  }
+  .chord-presets {
+    gap: 9px;
+  }
+  .chord-presets label {
+    flex-wrap: wrap;
+  }
+  .chord-heading p {
+    font-size: 10px;
+  }
+
+  .instrument-controls {
+    padding: 15px 12px;
+  }
+  .instrument-controls-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .instrument-controls-top h2 {
+    font-size: 17px;
+  }
+  .voice-choices {
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: 15px;
+  }
+  .voice-choices button {
+    padding: 11px;
+  }
+  .voice-choices strong {
+    font-size: 15px;
+  }
+
+  .lid-cover {
+    min-height: 108px;
+    padding: 22px 12px 26px;
+  }
+  .lid-emblem {
+    font-size: 11px;
+    letter-spacing: 3px;
+  }
+  .lid-invitation {
+    font-size: 9px;
+    letter-spacing: 0;
+    gap: 6px;
+  }
+  .lid-tray-inner {
+    padding: 13px 10px 15px;
+  }
+  .lid-tabs {
+    gap: 2px;
+    overflow-x: auto;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+  .lid-tabs button {
+    font-size: 10px;
+    padding: 7px 9px;
+    min-height: 40px;
+    flex: 1;
+  }
+  .lid-menu-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 7px;
+  }
+  .lid-menu-grid button {
+    padding: 13px;
+    gap: 7px;
+  }
+  .lid-menu-grid strong {
+    font-size: 11px;
+  }
+  .lid-menu-grid span {
+    font-size: 9px;
+  }
+  .lid-function-menu h3 {
+    font-size: 16px;
+  }
+  .lid-function-menu p {
+    font-size: 10px;
+  }
+  .lid-hinges i {
+    width: 30px;
+  }
+  .lid-tray .import-actions {
+    flex-wrap: wrap;
+  }
+  .lid-tray .url-row {
+    flex-wrap: wrap;
+  }
+  .lid-tray .url-row input {
+    flex-basis: calc(100% - 100px);
+  }
+  .lid-cover {
+    will-change: auto;
+  }
+
+  .grand-workbench {
+    grid-template-columns: 1fr;
+    gap: 25px;
+    padding: 4px 5px 8px;
+  }
+  .grand-piano-lid .lid-tray-inner {
+    padding: 0 11px 18px;
+  }
+  .grand-piano-lid .lid-tabs {
+    justify-content: initial;
+  }
+  .grand-piano-lid .lid-emblem {
+    font-size: 9px;
+    letter-spacing: 2px;
+  }
+  .grand-piano-lid .lid-invitation {
+    right: 15px;
+    font-size: 9px;
+  }
+  .music-desk .visual-area {
+    height: 270px;
+  }
+  .music-desk .studio-top {
+    flex-wrap: wrap;
+  }
+  .midi-desk {
+    padding: 0 2px;
+  }
+  .midi-drop-slot {
+    min-height: 125px;
+  }
+  .midi-desk .url-row input {
+    flex-basis: calc(100% - 95px);
+  }
+  .midi-desk .url-row > .primary {
+    width: 90px;
+    min-width: 90px;
+  }
+  .midi-desk .local-badge {
+    display: flex;
+  }
+  .place-score > strong {
+    font-size: 14px;
+  }
+
   .roll-label {
     left: 8px;
     right: 8px;
@@ -2414,5 +2416,31 @@ footer > span:first-child {
   .accompaniment-options button {
     flex: 1;
     padding: 7px 4px;
+  }
+
+  .app {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+  header {
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(17px, env(safe-area-inset-left));
+    padding-right: max(17px, env(safe-area-inset-right));
+  }
+  main {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .player {
+    padding-bottom: calc(15px + env(safe-area-inset-bottom));
+  }
+  .piano-housing {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .key-binding {
+    display: none;
   }
 }

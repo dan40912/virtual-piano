@@ -8,6 +8,8 @@ export class PianoEngine {
   gain?: Tone.Gain;
   pending?: Promise<void>;
   state = "尚未啟動";
+  volume = 0.7;
+  reverbWet = 0.18;
   onState = (s: string) => {
     this.state = s;
   };
@@ -25,12 +27,13 @@ export class PianoEngine {
       for (let o = 1; o <= 7; o++)
         for (const n of ["C", "Ds", "Fs", "A"])
           urls[n.replace("s", "#") + o] = n + o + ".mp3";
-      this.gain = new Tone.Gain(0.7).connect(
+      this.gain = new Tone.Gain(this.volume).connect(
         new Tone.Limiter(-3).toDestination(),
       );
-      this.reverb = new Tone.Reverb({ decay: 2.5, wet: 0.18 }).connect(
-        this.gain,
-      );
+      this.reverb = new Tone.Reverb({
+        decay: 2.5,
+        wet: this.reverbWet,
+      }).connect(this.gain);
       this.filter = new Tone.Filter({
         type: "lowpass",
         frequency: voiceStyles[this.style].cutoff,
@@ -58,13 +61,26 @@ export class PianoEngine {
   now() {
     return Tone.now();
   }
+  audioLatency() {
+    const context = Tone.getContext().rawContext as AudioContext & {
+      outputLatency?: number;
+    };
+    return {
+      baseLatencyMs: Number.isFinite(context.baseLatency)
+        ? Number((context.baseLatency * 1000).toFixed(2))
+        : null,
+      outputLatencyMs: Number.isFinite(context.outputLatency)
+        ? Number((context.outputLatency! * 1000).toFixed(2))
+        : null,
+    };
+  }
   attack(id: string, n: number, velocity = 0.75, time?: number) {
     if (n < 21 || n > 108 || !this.sampler?.loaded) return;
     this.held.set(id, n);
     this.sustained.delete(n);
     this.sampler.triggerAttack(
       Tone.Frequency(n, "midi").toFrequency(),
-      time,
+      time ?? Tone.immediate(),
       styledVelocity(velocity, this.style),
     );
   }
@@ -77,7 +93,7 @@ export class PianoEngine {
     else
       this.sampler?.triggerRelease(
         Tone.Frequency(n, "midi").toFrequency(),
-        time,
+        time ?? Tone.immediate(),
       );
   }
   sustain(down: boolean, time?: number, source = "manual") {
@@ -88,7 +104,7 @@ export class PianoEngine {
         if (![...this.held.values()].includes(n))
           this.sampler?.triggerRelease(
             Tone.Frequency(n, "midi").toFrequency(),
-            time,
+            time ?? Tone.immediate(),
           );
       this.sustained.clear();
     }
@@ -102,6 +118,8 @@ export class PianoEngine {
   }
   settings(v: number, r: number, style: PianoStyle = "natural") {
     this.style = style;
+    this.volume = v;
+    this.reverbWet = r;
     const preset = voiceStyles[style];
     if (this.filter) this.filter.frequency.rampTo(preset.cutoff, 0.08);
     if (this.sampler) {

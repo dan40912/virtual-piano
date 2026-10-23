@@ -9,14 +9,28 @@ import {
   keyboardBinding,
   validShortcut,
 } from "./music/keyboard";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { ChordPanel } from "./components/ChordPanel";
 import { Piano } from "./components/Piano";
 import { Roll, Sheet } from "./components/Visuals";
 import { engine } from "./audio/PianoEngine";
 import { player } from "./audio/PlaybackScheduler";
 import { useSettings } from "./store";
-import { demo, defaultMap, groups, noteName, type Note, type Song } from "./music/model";
+import {
+  demo,
+  defaultMap,
+  groups,
+  noteName,
+  type Note,
+  type Song,
+} from "./music/model";
 import {
   importHymnal,
   parseMidi,
@@ -49,6 +63,36 @@ const clock = (s: number) =>
   `${Math.floor(s / 60)}:${Math.floor(s % 60)
     .toString()
     .padStart(2, "0")}`;
+
+function PlaybackProgress({
+  duration,
+  onSeek,
+}: {
+  duration: number;
+  onSeek: (position: number) => void;
+}) {
+  const position = useSyncExternalStore(
+    player.subscribePosition,
+    player.getPositionSnapshot,
+    player.getPositionSnapshot,
+  );
+  return (
+    <div className="timeline">
+      <span>{clock(position)}</span>
+      <input
+        aria-label="播放進度"
+        type="range"
+        min="0"
+        max={duration || 1}
+        step=".01"
+        value={position}
+        onChange={(event) => onSeek(+event.target.value)}
+      />
+      <span>{clock(duration)}</span>
+    </div>
+  );
+}
+
 export default function App() {
   const settings = useSettings();
   const [lidOpen, setLidOpen] = useState(false);
@@ -57,15 +101,17 @@ export default function App() {
     useSettings.getState().set({ theme: "dark" });
   }, []);
   const [song, setSong] = useState<Song | null>(defaultSong);
-  const [position, setPosition] = useState(0),
-    [playing, setPlaying] = useState(false);
+  const position = player.position;
+  const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1),
     [transpose, setTranspose] = useState(0),
     [mode, setMode] = useState("practice"),
     [practiceType, setPracticeType] = useState("rhythm"),
     [tolerance, setTolerance] = useState(0.2);
   const [muted, setMuted] = useState<number[]>([]),
-    [autoPolicy, setAutoPolicy] = useState<Record<number, "all" | "bass" | "manual">>({
+    [autoPolicy, setAutoPolicy] = useState<
+      Record<number, "all" | "bass" | "manual">
+    >({
       0: "bass",
     }),
     [loop, setLoop] = useState(false),
@@ -93,6 +139,8 @@ export default function App() {
   const [step, setStep] = useState(0),
     [score, setScore] = useState({ correct: 0, wrong: 0, offset: 0 });
   const playToken = useRef(0);
+  const audioPrimed = useRef(false);
+  const iosTipShown = useRef(false);
   const previewTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -122,10 +170,15 @@ export default function App() {
     mode === "practice" && practiceType === "wait"
       ? (groupList[step] || []).map((n) => n.midi + transpose)
       : [];
-  const refresh = useCallback(
-    () => setActive(new Set(pressed.current.values())),
-    [],
-  );
+  const refresh = useCallback(() => {
+    const next = new Set(pressed.current.values());
+    setActive((previous) =>
+      previous.size === next.size &&
+      [...next].every((midi) => previous.has(midi))
+        ? previous
+        : next,
+    );
+  }, []);
   const release = useCallback(
     (id: string) => {
       const n = pressed.current.get(id);
@@ -155,7 +208,6 @@ export default function App() {
     setStep(0);
     setScore({ correct: 0, wrong: 0, offset: 0 });
     player.stop();
-    setPosition(0);
     setPlaying(false);
     panic();
   }, [panic]);
@@ -190,7 +242,8 @@ export default function App() {
     resetPractice();
     setStatus(`${s.title} · ${s.notes.length} 個音符，解析成功`);
   };
-  const down = async (id: string, base: number) => {
+  const down = (id: string, base: number) => {
+    const inputStarted = performance.now();
     if (pressed.current.has(id)) return;
     const n = base + (manualTranspose ? transpose : 0);
     if (n < 21 || n > 108) {
@@ -201,21 +254,29 @@ export default function App() {
     if (!id.startsWith("preview:")) recorder.attack(id, n, settings.velocity);
     waitHeld.current.add(n);
     refresh();
-    void engine
-      .ready()
-      .then(() => {
-        engine.settings(settings.volume, settings.reverb, settings.pianoStyle);
-        if (pressed.current.get(id) === n)
-          engine.attack(id, n, settings.velocity);
-      })
-      .catch((e) => setStatus(e.message));
+    const attackManual = () => {
+      if (pressed.current.get(id) !== n) return;
+      engine.attack(id, n, settings.velocity);
+      if (import.meta.env.DEV) {
+        console.debug("Manual piano input → attack", {
+          elapsedMs: Number((performance.now() - inputStarted).toFixed(2)),
+          ...engine.audioLatency(),
+        });
+      }
+    };
+    if (engine.sampler?.loaded) attackManual();
+    else
+      void engine
+        .ready()
+        .then(attackManual)
+        .catch((e) => setStatus(e.message));
     if ((mode === "practice" || mode === "accompaniment") && song) {
       if (mode === "practice" && practiceType === "wait") {
         const group = groupList[step] || [];
         if (group.some((a) => a.midi + transpose === n)) {
           if (group.every((a) => waitHeld.current.has(a.midi + transpose))) {
             setScore((s) => ({ ...s, correct: s.correct + group.length }));
-            setPosition(group[0].startTime);
+            player.setPosition(group[0].startTime);
             setStep((s) => s + 1);
           }
         } else setScore((s) => ({ ...s, wrong: s.wrong + 1 }));
@@ -226,7 +287,8 @@ export default function App() {
               !muted.includes(a.trackId) &&
               (mode !== "accompaniment" ||
                 autoPolicy[a.trackId] === "manual" ||
-                (autoPolicy[a.trackId] === "bass" && a.midi + transpose > 60)) &&
+                (autoPolicy[a.trackId] === "bass" &&
+                  a.midi + transpose > 60)) &&
               !hit.current.has(a.id) &&
               a.startTime >= practiceStart.current &&
               a.midi + transpose === n &&
@@ -251,11 +313,35 @@ export default function App() {
   };
   const downRef = useRef(down);
   downRef.current = down;
+  const handlePianoDown = useCallback(
+    (id: string, midi: number) => void downRef.current(id, midi),
+    [],
+  );
+  const primeAudio = useCallback(() => {
+    if (audioPrimed.current) return;
+    audioPrimed.current = true;
+    if (!iosTipShown.current && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      iosTipShown.current = true;
+      setStatus("iPhone 沒有聲音時，請確認手機側邊的靜音開關。音源載入中…");
+    }
+    void engine
+      .ready()
+      .then(() => {
+        if (import.meta.env.DEV)
+          console.debug("Piano audio context latency", engine.audioLatency());
+      })
+      .catch((e) => {
+        audioPrimed.current = false;
+        setStatus(e.message);
+      });
+  }, []);
   const noteIsAuto = useCallback(
     (note: Note) => {
       if (mode !== "accompaniment") return true;
       const policy = autoPolicy[note.trackId];
-      return policy === "all" || (policy === "bass" && note.midi + transpose <= 60);
+      return (
+        policy === "all" || (policy === "bass" && note.midi + transpose <= 60)
+      );
     },
     [mode, autoPolicy, transpose],
   );
@@ -411,7 +497,6 @@ export default function App() {
         setScore({ correct: 0, wrong: 0, offset: 0 });
       }
       previousPosition.current = p;
-      setPosition(p);
     };
     player.onEnd = () => {
       setPlaying(false);
@@ -435,7 +520,7 @@ export default function App() {
       if (token !== playToken.current) return;
       engine.settings(settings.volume, settings.reverb, settings.pianoStyle);
       if (player.position >= song.duration) {
-        player.position = 0;
+        player.setPosition(0);
         resetPractice();
       }
       player.silent = mode === "practice";
@@ -455,12 +540,22 @@ export default function App() {
     player.b = loopB;
     player.metronome = metro;
     if (player.playing && song) player.start(song);
-  }, [speed, transpose, muted, loop, loopA, loopB, metro, song, mode, noteIsAuto]);
+  }, [
+    speed,
+    transpose,
+    muted,
+    loop,
+    loopA,
+    loopB,
+    metro,
+    song,
+    mode,
+    noteIsAuto,
+  ]);
   const seek = (p: number) => {
     previousPosition.current = p;
     practiceStart.current = p;
-    player.position = p;
-    setPosition(p);
+    player.setPosition(p);
     if (player.playing && song) player.start(song);
     if (mode === "practice") {
       setStep(
@@ -531,22 +626,7 @@ export default function App() {
       n + settings.octave * 12,
     ]),
   );
-  const autoActive =
-    song && playing
-      ? song.notes
-          .filter(
-            (n) =>
-              !muted.includes(n.trackId) &&
-              noteIsAuto(n) &&
-              n.startTime <= position &&
-              n.startTime + n.duration > position,
-          )
-          .map((n) => n.midi + transpose)
-      : [];
-  const allActive = new Set([
-    ...active,
-    ...(mode === "auto" || mode === "accompaniment" ? autoActive : []),
-  ]);
+  const allActive = new Set([...active, ...player.getActiveNotesSnapshot()]);
   const manualFollow =
     (mode === "practice" && practiceType === "rhythm") ||
     mode === "accompaniment";
@@ -582,6 +662,8 @@ export default function App() {
   return (
     <div
       className="app"
+      onPointerDownCapture={primeAudio}
+      onKeyDownCapture={primeAudio}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -786,7 +868,6 @@ export default function App() {
                             </div>
                             <Roll
                               song={song}
-                              position={position}
                               transpose={transpose}
                               count={settings.keyCount}
                               zoom={zoom}
@@ -795,7 +876,11 @@ export default function App() {
                               mapping={settings.mapping}
                               octave={settings.octave}
                               manual={manualFollow}
-                              autoPolicy={mode === "accompaniment" ? autoPolicy : undefined}
+                              autoPolicy={
+                                mode === "accompaniment"
+                                  ? autoPolicy
+                                  : undefined
+                              }
                             />
                             {!song && (
                               <p className="empty-roll">
@@ -808,7 +893,7 @@ export default function App() {
                             <p className="sheet-note">
                               MusicXML 原始記譜 · 游標依原始音符位置同步追蹤。
                             </p>
-                            <Sheet song={song} position={position} />
+                            <Sheet song={song} />
                           </>
                         ) : (
                           <div className="notation-empty">
@@ -1006,12 +1091,13 @@ export default function App() {
             <Piano
               count={settings.keyCount}
               mapping={shownMap}
-              active={allActive}
+              active={active}
               expected={expected}
-              onDown={(id, n) => void down(id, n)}
+              onDown={handlePianoDown}
               onUp={release}
               onSelect={setSelected}
               mappingMode={panel === "keyboard"}
+              autoEnabled={mode === "auto" || mode === "accompaniment"}
               onScroll={setScroll}
               scrollPosition={scroll}
               onBounds={setScrollMax}
@@ -1080,19 +1166,7 @@ export default function App() {
             </div>
           </div>
           <div className="player">
-            <div className="timeline">
-              <span>{clock(position)}</span>
-              <input
-                aria-label="播放進度"
-                type="range"
-                min="0"
-                max={song?.duration || 1}
-                step=".01"
-                value={position}
-                onChange={(e) => seek(+e.target.value)}
-              />
-              <span>{clock(song?.duration || 0)}</span>
-            </div>
+            <PlaybackProgress duration={song?.duration || 0} onSeek={seek} />
             <div className="transport-row">
               <div className="transport">
                 <button
@@ -1273,9 +1347,9 @@ export default function App() {
                 ? "跟隨每一個音符，感受音樂的呼吸。"
                 : mode === "accompaniment"
                   ? "選擇自動播放的部分；其餘音符由你親自彈奏。"
-                : mode === "free"
-                  ? "使用電腦鍵盤、滑鼠或觸控，盡情彈奏。"
-                  : "跟隨提示練習，讓每次演奏都更進一步。"}
+                  : mode === "free"
+                    ? "使用電腦鍵盤、滑鼠或觸控，盡情彈奏。"
+                    : "跟隨提示練習，讓每次演奏都更進一步。"}
             </span>
             <button onClick={() => setPanel("tracks")}>
               <SlidersHorizontal size={15} /> 音軌
@@ -1297,7 +1371,9 @@ export default function App() {
                     type="button"
                     onClick={() =>
                       setAutoPolicy(
-                        Object.fromEntries(song.tracks.map((_, i) => [i, "all"])) as Record<number, "all" | "bass" | "manual">,
+                        Object.fromEntries(
+                          song.tracks.map((_, i) => [i, "all"]),
+                        ) as Record<number, "all" | "bass" | "manual">,
                       )
                     }
                   >
@@ -1307,7 +1383,9 @@ export default function App() {
                     type="button"
                     onClick={() =>
                       setAutoPolicy(
-                        Object.fromEntries(song.tracks.map((_, i) => [i, "manual"])) as Record<number, "all" | "bass" | "manual">,
+                        Object.fromEntries(
+                          song.tracks.map((_, i) => [i, "manual"]),
+                        ) as Record<number, "all" | "bass" | "manual">,
                       )
                     }
                   >
@@ -1318,7 +1396,9 @@ export default function App() {
               <div className="accompaniment-tracks">
                 {song.tracks.map((track, i) => {
                   const policy = autoPolicy[i] || "manual";
-                  const noteCount = song.notes.filter((n) => n.trackId === i).length;
+                  const noteCount = song.notes.filter(
+                    (n) => n.trackId === i,
+                  ).length;
                   return (
                     <div className="accompaniment-track" key={`${track}-${i}`}>
                       <div className="accompaniment-track-name">
@@ -1326,19 +1406,28 @@ export default function App() {
                         <span>{track}</span>
                         <small>{noteCount} 音符</small>
                       </div>
-                      <div className="accompaniment-options" role="group" aria-label={`${track} 演奏方式`}>
-                        {([
-                          ["manual", "手彈"],
-                          ["bass", "低音自動"],
-                          ["all", "整軌自動"],
-                        ] as const).map(([value, label]) => (
+                      <div
+                        className="accompaniment-options"
+                        role="group"
+                        aria-label={`${track} 演奏方式`}
+                      >
+                        {(
+                          [
+                            ["manual", "手彈"],
+                            ["bass", "低音自動"],
+                            ["all", "整軌自動"],
+                          ] as const
+                        ).map(([value, label]) => (
                           <button
                             type="button"
                             key={value}
                             className={policy === value ? "selected" : ""}
                             aria-pressed={policy === value}
                             onClick={() =>
-                              setAutoPolicy((current) => ({ ...current, [i]: value }))
+                              setAutoPolicy((current) => ({
+                                ...current,
+                                [i]: value,
+                              }))
                             }
                           >
                             {label}
@@ -1350,8 +1439,12 @@ export default function App() {
                 })}
               </div>
               <div className="accompaniment-legend">
-                <span><i className="auto" /> 自動播放</span>
-                <span><i className="hand" /> 請你手彈（Piano Roll 會標出電腦按鍵）</span>
+                <span>
+                  <i className="auto" /> 自動播放
+                </span>
+                <span>
+                  <i className="hand" /> 請你手彈（Piano Roll 會標出電腦按鍵）
+                </span>
               </div>
             </div>
           )}

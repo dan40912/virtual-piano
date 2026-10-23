@@ -20,6 +20,52 @@ export class PlaybackScheduler {
   raf = 0;
   onFrame = (_p: number) => {};
   onEnd = () => {};
+  private positionListeners = new Set<() => void>();
+  private activeNoteListeners = new Set<() => void>();
+  private scheduledNotes = new Map<string, number>();
+  private activeNoteSnapshot = new Set<number>();
+  subscribePosition = (listener: () => void) => {
+    this.positionListeners.add(listener);
+    return () => this.positionListeners.delete(listener);
+  };
+  subscribeActiveNotes = (listener: () => void) => {
+    this.activeNoteListeners.add(listener);
+    return () => this.activeNoteListeners.delete(listener);
+  };
+  getPositionSnapshot = () => this.position;
+  getActiveNotesSnapshot = () => this.activeNoteSnapshot;
+  setPosition(position: number) {
+    this.position = position;
+    this.positionListeners.forEach((listener) => listener());
+  }
+  private publishPosition() {
+    this.positionListeners.forEach((listener) => listener());
+  }
+  private publishActiveNotes() {
+    const next = new Set(this.scheduledNotes.values());
+    if (
+      next.size === this.activeNoteSnapshot.size &&
+      [...next].every((midi) => this.activeNoteSnapshot.has(midi))
+    )
+      return;
+    this.activeNoteSnapshot = next;
+    this.activeNoteListeners.forEach((listener) => listener());
+  }
+  private attackScheduled(
+    id: string,
+    midi: number,
+    velocity: number,
+    time: number,
+  ) {
+    engine.attack(id, midi, velocity, time);
+    this.scheduledNotes.set(id, midi);
+    this.publishActiveNotes();
+  }
+  private releaseScheduled(id: string, time: number) {
+    engine.release(id, time);
+    this.scheduledNotes.delete(id);
+    this.publishActiveNotes();
+  }
   click?: Tone.MembraneSynth;
   start(song: Song) {
     this.stop(false);
@@ -87,18 +133,23 @@ export class PlaybackScheduler {
         );
       transport.schedule(
         (t) =>
-          engine.attack("auto" + n.id, n.midi + this.transpose, n.velocity, t),
+          this.attackScheduled(
+            "auto" + n.id,
+            n.midi + this.transpose,
+            n.velocity,
+            t,
+          ),
         start,
       );
       transport.schedule(
-        (t) => engine.release("auto" + n.id, t),
+        (t) => this.releaseScheduled("auto" + n.id, t),
         Math.max(start, end),
       );
       // Notes already sounding at a seek position are re-attacked at the new origin.
       if (start < offset && end > offset)
         transport.schedule(
           (t) =>
-            engine.attack(
+            this.attackScheduled(
               "auto" + n.id,
               n.midi + this.transpose,
               n.velocity,
@@ -133,6 +184,7 @@ export class PlaybackScheduler {
           engine.sustain(false, t, "auto");
           Tone.getDraw().schedule(() => {
             this.position = song.duration;
+            this.publishPosition();
             this.stop(false);
             this.onFrame(this.position);
             this.onEnd();
@@ -148,6 +200,7 @@ export class PlaybackScheduler {
         ? anchor + ((this.from - anchor + elapsed) % (limit - anchor))
         : Math.min(song.duration, this.from + elapsed);
       this.onFrame(this.position);
+      this.publishPosition();
       this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);
@@ -159,7 +212,12 @@ export class PlaybackScheduler {
     Tone.getTransport().cancel();
     Tone.getTransport().loop = false;
     engine.panic();
-    if (reset) this.position = 0;
+    this.scheduledNotes.clear();
+    this.publishActiveNotes();
+    if (reset) {
+      this.position = 0;
+      this.publishPosition();
+    }
   }
 }
 export const player = new PlaybackScheduler();

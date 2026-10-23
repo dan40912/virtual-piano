@@ -62,6 +62,14 @@ beforeEach(() => {
   globalThis.cancelAnimationFrame = vi.fn();
 });
 describe("audio clock scheduler", () => {
+  it("publishes explicit seeks to narrowly subscribed progress views", () => {
+    const p = new PlaybackScheduler();
+    const listener = vi.fn();
+    p.subscribePosition(listener);
+    p.setPosition(1.5);
+    expect(p.getPositionSnapshot()).toBe(1.5);
+    expect(listener).toHaveBeenCalledOnce();
+  });
   it("loops within A/B on the audio transport and excludes notes beyond B", () => {
     const p = new PlaybackScheduler();
     p.loop = true;
@@ -81,6 +89,11 @@ describe("audio clock scheduler", () => {
     events.forEach((e) => e.fn(11));
     expect(mocks.engine.attack).toHaveBeenCalledWith("autoa", 62, 0.6, 11);
     expect(mocks.engine.attack).toHaveBeenCalledWith("autob", 66, 0.8, 11);
+    expect([...p.getActiveNotesSnapshot()].sort()).toEqual([62, 66]);
+    mocks.events
+      .filter((e) => e.time === 2 || e.time === 3)
+      .forEach((e) => e.fn(12));
+    expect(p.getActiveNotesSnapshot().size).toBe(0);
   });
   it("changes speed without changing pitch and respects track mute", () => {
     const p = new PlaybackScheduler();

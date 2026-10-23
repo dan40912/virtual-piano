@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("tone", () => ({
   Frequency: (n: number) => ({ toFrequency: () => n }),
   now: () => 0,
+  immediate: () => 0,
 }));
 import { PianoEngine } from "./PianoEngine";
 describe("sample engine note ownership and sustain", () => {
@@ -26,6 +27,16 @@ describe("sample engine note ownership and sustain", () => {
     engine.attack("a", 60, 0.6, 1.25);
     expect(sampler.triggerAttack).toHaveBeenCalledWith(60, 1.25, 0.6);
   });
+  it("uses the immediate audio clock for manual attacks and releases", () => {
+    engine.attack("manual", 60);
+    engine.release("manual");
+    expect(sampler.triggerAttack).toHaveBeenCalledWith(
+      60,
+      0,
+      expect.any(Number),
+    );
+    expect(sampler.triggerRelease).toHaveBeenCalledWith(60, 0);
+  });
   it("does not release a note still held by another input", () => {
     engine.attack("mouse", 60);
     engine.attack("KeyA", 60);
@@ -42,7 +53,7 @@ describe("sample engine note ownership and sustain", () => {
     expect(engine.sustained.has(60)).toBe(true);
     expect(sampler.triggerRelease).not.toHaveBeenCalled();
     engine.sustain(false);
-    expect(sampler.triggerRelease).toHaveBeenCalledWith(60, undefined);
+    expect(sampler.triggerRelease).toHaveBeenCalledWith(60, 0);
   });
   it("combines MIDI and manual pedals without dropping held notes", () => {
     engine.sustain(true, 0, "auto");

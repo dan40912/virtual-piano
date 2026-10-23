@@ -1,6 +1,7 @@
 import { shortcutLabel } from "../music/keyboard";
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { isBlack, noteName } from "../music/model";
+import { player } from "../audio/PlaybackScheduler";
 export const Piano = memo(function Piano({
   count,
   mapping,
@@ -10,6 +11,7 @@ export const Piano = memo(function Piano({
   onUp,
   onSelect,
   mappingMode,
+  autoEnabled = false,
   onScroll,
   scrollPosition,
   onBounds,
@@ -22,6 +24,7 @@ export const Piano = memo(function Piano({
   onUp: (id: string) => void;
   onSelect: (n: number) => void;
   mappingMode: boolean;
+  autoEnabled?: boolean;
   onScroll: (x: number) => void;
   scrollPosition: number;
   onBounds: (max: number) => void;
@@ -31,6 +34,27 @@ export const Piano = memo(function Piano({
   const whites = nums.filter((n) => !isBlack(n));
   const pointers = useRef(new Map<number, number>());
   const ref = useRef<HTMLDivElement>(null);
+  const bindingByMidi = useMemo(() => {
+    const reverse = new Map<number, string>();
+    for (const [key, midi] of Object.entries(mapping)) reverse.set(midi, key);
+    return reverse;
+  }, [mapping]);
+  const scheduledActive = useSyncExternalStore(
+    player.subscribeActiveNotes,
+    player.getActiveNotesSnapshot,
+    player.getActiveNotesSnapshot,
+  );
+  const visibleActive = useMemo(() => {
+    if (!autoEnabled || scheduledActive.size === 0) return active;
+    const merged = new Set(active);
+    scheduledActive.forEach((midi) => merged.add(midi));
+    return merged;
+  }, [active, autoEnabled, scheduledActive]);
+  const finishPointer = (pointerId: number) => {
+    if (!pointers.current.has(pointerId)) return;
+    onUp("pointer" + pointerId);
+    pointers.current.delete(pointerId);
+  };
   useEffect(() => {
     const root = ref.current!;
     const update = () => {
@@ -75,7 +99,11 @@ export const Piano = memo(function Piano({
             onSelect(n);
             return;
           }
-          e.currentTarget.setPointerCapture(e.pointerId);
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch {
+            // Ignore capture races while the keyboard is being reflowed.
+          }
           pointers.current.set(e.pointerId, n);
           onDown("pointer" + e.pointerId, n);
         }}
@@ -92,12 +120,13 @@ export const Piano = memo(function Piano({
           }
         }}
         onPointerUp={(e) => {
-          onUp("pointer" + e.pointerId);
-          pointers.current.delete(e.pointerId);
+          finishPointer(e.pointerId);
         }}
         onPointerCancel={(e) => {
-          onUp("pointer" + e.pointerId);
-          pointers.current.delete(e.pointerId);
+          finishPointer(e.pointerId);
+        }}
+        onLostPointerCapture={(e) => {
+          finishPointer(e.pointerId);
         }}
       >
         {nums.map((n) => {
@@ -109,19 +138,17 @@ export const Piano = memo(function Piano({
               type="button"
               tabIndex={-1}
               aria-label={noteName(n)}
-              title={`${noteName(n)} · ${shortcutLabel(Object.entries(mapping).find(([, v]) => v === n)?.[0] || "未綁定")}`}
+              title={`${noteName(n)} · ${shortcutLabel(bindingByMidi.get(n) || "未綁定")}`}
               key={n}
               data-midi={n}
-              className={`piano-key ${black ? "black" : "white"} ${active.has(n) ? "pressed" : ""} ${expected.includes(n) ? "expected" : ""}`}
+              className={`piano-key ${black ? "black" : "white"} ${visibleActive.has(n) ? "pressed" : ""} ${expected.includes(n) ? "expected" : ""}`}
               style={{
                 left: `${(wi - (black ? 0.32 : 0)) * width}%`,
                 width: `${width * (black ? 0.64 : 1)}%`,
               }}
             >
               <span className="key-binding">
-                {shortcutLabel(
-                  Object.entries(mapping).find(([, v]) => v === n)?.[0] || "",
-                )}
+                {shortcutLabel(bindingByMidi.get(n) || "")}
               </span>
               <span className="note-label">{noteName(n)}</span>
             </button>
