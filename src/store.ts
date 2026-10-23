@@ -18,6 +18,7 @@ interface Settings {
   theme: string;
   keyCount: number;
   octave: number;
+  mobileLayout: "auto" | "play" | "score";
   set: (s: Partial<Settings>) => void;
 }
 export const useSettings = create<Settings>()(
@@ -36,11 +37,12 @@ export const useSettings = create<Settings>()(
       theme: "dark",
       keyCount: 61,
       octave: 0,
+      mobileLayout: "auto",
       set: (s) => set(s),
     }),
     {
       name: "piano-studio-settings-v1",
-      version: 2,
+      version: 3,
       migrate: (state) => {
         const old = state as Partial<Settings>;
         return {
@@ -49,6 +51,10 @@ export const useSettings = create<Settings>()(
           pedal: old.pedal?.startsWith("Shift")
             ? "Space"
             : old.pedal || "Space",
+          mobileLayout:
+            old.mobileLayout === "play" || old.mobileLayout === "score"
+              ? old.mobileLayout
+              : "auto",
         } as Settings;
       },
     },

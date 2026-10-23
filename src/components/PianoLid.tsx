@@ -1,5 +1,5 @@
-import { useEffect, useRef, useId, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useRef, useId, useState, type ReactNode } from "react";
+import { ChevronDown, X } from "lucide-react";
 export interface LidTab {
   id: string;
   label: string;
@@ -25,6 +25,12 @@ export function PianoLid({
     prop = useRef<SVGLineElement>(null),
     inside = useRef<SVGGElement>(null);
   const artId = useId().replace(/:/g, "");
+  const [phoneLayout, setPhoneLayout] = useState(
+    () =>
+      window.matchMedia(
+        "(max-width: 767px), (orientation: landscape) and (max-height: 500px)",
+      ).matches,
+  );
   const motion = useRef({
     height: 0,
     velocity: 0,
@@ -103,6 +109,15 @@ export function PianoLid({
       reduced.removeEventListener("change", start);
     };
   }, [open, activeTab]);
+  useEffect(() => {
+    const query = window.matchMedia(
+      "(max-width: 767px), (orientation: landscape) and (max-height: 500px)",
+    );
+    const update = () => setPhoneLayout(query.matches);
+    query.addEventListener("change", update);
+    update();
+    return () => query.removeEventListener("change", update);
+  }, []);
   return (
     <section
       className={"piano-lid grand-piano-lid " + (open ? "is-open" : "")}
@@ -245,11 +260,17 @@ export function PianoLid({
         className="lid-tray"
         id="piano-lid-tray"
         ref={shell}
-        inert={!open}
-        aria-hidden={!open}
+        inert={!open && !phoneLayout}
+        aria-hidden={!open && !phoneLayout}
         style={{ height: 0 }}
       >
         <div className="lid-tray-inner" ref={inner}>
+          <div className="mobile-track-sheet-heading">
+            <strong>曲目與工具</strong>
+            <button type="button" onClick={onToggle} aria-label="關閉曲目面板">
+              <X size={18} />
+            </button>
+          </div>
           <div className="lid-tabs" role="tablist" aria-label="琴蓋功能分類">
             {tabs.map((tab, i) => (
               <button

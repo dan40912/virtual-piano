@@ -9,13 +9,23 @@ it("persists custom mappings and multiple profiles and restores after reload", a
     mapping: { KeyZ: 60, KeyX: 62 },
     profiles: { practice: { KeyZ: 60 } },
     octave: 1,
+    mobileLayout: "play",
   });
   const saved = JSON.parse(localStorage.getItem("piano-studio-settings-v1")!);
   expect(saved.state.mapping).toEqual({ KeyZ: 60, KeyX: 62 });
   expect(saved.state.profiles.practice.KeyZ).toBe(60);
+  expect(saved.state.mobileLayout).toBe("play");
   vi.resetModules();
   const reloaded = await import("./store");
   expect(reloaded.useSettings.getState().mapping.KeyX).toBe(62);
   expect(reloaded.useSettings.getState().octave).toBe(1);
+  expect(reloaded.useSettings.getState().mobileLayout).toBe("play");
+  localStorage.setItem(
+    "piano-studio-settings-v1",
+    JSON.stringify({ state: { mapping: { KeyA: 60 } }, version: 2 }),
+  );
+  vi.resetModules();
+  const migrated = await import("./store");
+  expect(migrated.useSettings.getState().mobileLayout).toBe("auto");
   vi.unstubAllGlobals();
 });

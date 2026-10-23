@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 import { it, expect, vi } from "vitest";
-import { act } from "react";
+import { act, Profiler } from "react";
 import { createRoot } from "react-dom/client";
 import { Piano } from "./Piano";
+import { player } from "../audio/PlaybackScheduler";
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 it("mounts with scroll effects, renders 88 keys and supports independent pointers", async () => {
   const container = document.createElement("div");
@@ -60,6 +61,37 @@ it("mounts with scroll effects, renders 88 keys and supports independent pointer
     new PointerEvent("pointerup", { bubbles: true, pointerId: 3 }),
   );
   expect(up.mock.calls).toEqual([["pointer1"], ["pointer2"], ["pointer3"]]);
+  await act(async () => root.unmount());
+  container.remove();
+});
+it("does not render on playback position ticks", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  let commits = 0;
+  await act(async () =>
+    root.render(
+      <Profiler id="piano" onRender={() => commits++}>
+        <Piano
+          count={61}
+          mapping={{ KeyA: 60 }}
+          active={new Set()}
+          expected={[]}
+          onDown={vi.fn()}
+          onUp={vi.fn()}
+          onSelect={vi.fn()}
+          mappingMode={false}
+          onScroll={vi.fn()}
+          onBounds={vi.fn()}
+          scrollPosition={0}
+        />
+      </Profiler>,
+    ),
+  );
+  const mountedCommits = commits;
+  await act(async () => player.setPosition(player.position + 0.02));
+  expect(mountedCommits).toBe(1);
+  expect(commits).toBe(mountedCommits);
   await act(async () => root.unmount());
   container.remove();
 });

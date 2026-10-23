@@ -1,5 +1,12 @@
 import { shortcutLabel } from "../music/keyboard";
-import { memo, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { isBlack, noteName } from "../music/model";
 import { player } from "../audio/PlaybackScheduler";
 export const Piano = memo(function Piano({
@@ -34,6 +41,7 @@ export const Piano = memo(function Piano({
   const whites = nums.filter((n) => !isBlack(n));
   const pointers = useRef(new Map<number, number>());
   const ref = useRef<HTMLDivElement>(null);
+  const [whiteKeyWidth, setWhiteKeyWidth] = useState(29);
   const bindingByMidi = useMemo(() => {
     const reverse = new Map<number, string>();
     for (const [key, midi] of Object.entries(mapping)) reverse.set(midi, key);
@@ -60,6 +68,15 @@ export const Piano = memo(function Piano({
     const update = () => {
       onBounds(Math.max(0, root.scrollWidth - root.clientWidth));
       onScroll(root.scrollLeft);
+      const compactLayout = window.matchMedia(
+        "(max-width: 767px), (orientation: landscape) and (max-height: 500px)",
+      ).matches;
+      const nextWidth = compactLayout
+        ? Math.max(32, Math.min(84, window.innerWidth / 11))
+        : 29;
+      setWhiteKeyWidth((current) =>
+        Math.abs(current - nextWidth) < 0.5 ? current : nextWidth,
+      );
     };
     update();
     const observer = new ResizeObserver(update);
@@ -88,7 +105,7 @@ export const Piano = memo(function Piano({
     >
       <div
         className="keys"
-        style={{ width: `max(100%, ${whites.length * 29}px)` }}
+        style={{ width: `max(100%, ${whites.length * whiteKeyWidth}px)` }}
         onPointerDown={(e) => {
           const key = (e.target as HTMLElement).closest<HTMLElement>(
             "[data-midi]",

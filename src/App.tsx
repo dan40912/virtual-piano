@@ -97,6 +97,7 @@ export default function App() {
   const settings = useSettings();
   const [lidOpen, setLidOpen] = useState(false);
   const [lidTab, setLidTab] = useState("import");
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   useEffect(() => {
     useSettings.getState().set({ theme: "dark" });
   }, []);
@@ -691,6 +692,7 @@ export default function App() {
           </button>
           <i />
           <button
+            className="desktop-lid-button"
             aria-label="打開琴蓋功能選單"
             onClick={() => {
               setLidTab("menu");
@@ -699,6 +701,18 @@ export default function App() {
           >
             <ChevronDown size={17} />
             <span>琴蓋選單</span>
+          </button>
+          <button
+            className="mobile-track-button"
+            aria-label={lidOpen ? "關閉曲目與工具" : "打開曲目與工具"}
+            aria-expanded={lidOpen}
+            onClick={() => {
+              setLidTab("import");
+              setLidOpen((open) => !open);
+            }}
+          >
+            <Music2 size={16} />
+            <span>曲目與工具</span>
           </button>
           <button
             aria-label="全螢幕"
@@ -738,7 +752,35 @@ export default function App() {
             <Headphones size={14} />
           </button>
         </div>
-        <section className="studio">
+        <section className="studio" data-mobile-layout={settings.mobileLayout}>
+          <div
+            className="mobile-layout-switch"
+            role="group"
+            aria-label="手機版面"
+          >
+            <span>版面</span>
+            <button
+              type="button"
+              data-layout="play"
+              className={settings.mobileLayout === "play" ? "selected" : ""}
+              aria-pressed={settings.mobileLayout === "play"}
+              onClick={() => settings.set({ mobileLayout: "play" })}
+            >
+              演奏版面
+            </button>
+            <button
+              type="button"
+              data-layout="score"
+              className={settings.mobileLayout === "score" ? "selected" : ""}
+              aria-pressed={settings.mobileLayout === "score"}
+              onClick={() => settings.set({ mobileLayout: "score" })}
+            >
+              看譜版面
+            </button>
+            <small>
+              {settings.mobileLayout === "auto" ? "依螢幕方向" : "已記住選擇"}
+            </small>
+          </div>
           <PianoLid
             open={lidOpen}
             onToggle={() => setLidOpen((v) => !v)}
@@ -1165,7 +1207,18 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div className="player">
+          <div className={`player ${mobileMoreOpen ? "mobile-more-open" : ""}`}>
+            <div className="mobile-playback-heading">
+              <strong>{song?.title || "自由演奏"}</strong>
+              <button
+                type="button"
+                className="mobile-more-toggle"
+                aria-expanded={mobileMoreOpen}
+                onClick={() => setMobileMoreOpen((open) => !open)}
+              >
+                <Settings2 size={15} /> {mobileMoreOpen ? "收起更多" : "更多"}
+              </button>
+            </div>
             <PlaybackProgress duration={song?.duration || 0} onSeek={seek} />
             <div className="transport-row">
               <div className="transport">

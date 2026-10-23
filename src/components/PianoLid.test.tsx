@@ -35,11 +35,14 @@ function Fixture() {
 }
 beforeEach(async () => {
   vi.clearAllMocks();
-  vi.spyOn(window, "matchMedia").mockReturnValue({
-    matches: true,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  } as unknown as MediaQueryList);
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        matches: query.includes("prefers-reduced-motion"),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }) as unknown as MediaQueryList,
+  );
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -101,4 +104,25 @@ it("supports arrow-key navigation between accessible tool tabs", async () => {
     container.querySelector("#lid-tab-record")?.getAttribute("aria-selected"),
   ).toBe("true");
   expect(document.activeElement?.id).toBe("lid-tab-record");
+});
+it("keeps the score content available when the mobile layout flattens the closed lid", async () => {
+  await act(async () => root.unmount());
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query) =>
+      ({
+        matches:
+          query.includes("max-width: 767px") ||
+          query.includes("prefers-reduced-motion"),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }) as unknown as MediaQueryList,
+  );
+  root = createRoot(container);
+  await act(async () => root.render(<Fixture />));
+  expect(container.querySelector(".lid-tray")?.hasAttribute("inert")).toBe(
+    false,
+  );
+  expect(
+    container.querySelector(".lid-tray")?.getAttribute("aria-hidden"),
+  ).toBe("false");
 });
