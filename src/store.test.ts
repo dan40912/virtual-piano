@@ -17,7 +17,7 @@ it("persists custom mappings and multiple profiles and restores after reload", a
   expect(saved.state.mapping).toEqual({ KeyZ: 60, KeyX: 62 });
   expect(saved.state.profiles.practice.KeyZ).toBe(60);
   expect(saved.state.lidHintSeen).toBe(true);
-  expect(saved.version).toBe(7);
+  expect(saved.version).toBe(8);
   expect(saved.state.mobileScoreSplit).toBe(0.46);
   expect(saved.state.visibleWhiteKeys).toBe(21);
   vi.resetModules();
@@ -42,11 +42,28 @@ it("persists custom mappings and multiple profiles and restores after reload", a
   expect(migrated.useSettings.getState().lidHintSeen).toBe(false);
   expect(migrated.useSettings.getState().mapping.KeyA).toBe(60);
   expect(migrated.useSettings.getState().mapping.KeyJ).toBe(71);
+  expect(migrated.useSettings.getState().mapping.KeyP).toBe(75);
   expect(migrated.useSettings.getState().visibleWhiteKeys).toBe(18);
   expect(Object.keys(migrated.useSettings.getState().mapping)).not.toContain(
     "Shift+KeyA",
   );
   expect(migrated.useSettings.getState()).not.toHaveProperty("mobileLayout");
   expect(migrated.useSettings.getState().mobileScoreSplit).toBe(0.55);
+  localStorage.setItem(
+    "piano-studio-settings-v1",
+    JSON.stringify({
+      state: {
+        mapping: Object.fromEntries(
+          ["KeyA", "KeyW", "KeyS", "KeyE", "KeyD", "KeyF", "KeyT", "KeyG", "KeyY", "KeyH", "KeyU", "KeyJ"]
+            .map((code, index) => [code, 60 + index]),
+        ),
+      },
+      version: 7,
+    }),
+  );
+  vi.resetModules();
+  const expandedDefaults = await import("./store");
+  expect(Object.keys(expandedDefaults.useSettings.getState().mapping)).toHaveLength(16);
+  expect(expandedDefaults.useSettings.getState().mapping.KeyP).toBe(75);
   vi.unstubAllGlobals();
 });

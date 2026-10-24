@@ -32,8 +32,8 @@ export function InstrumentControls({ onPreview }: { onPreview: () => void }) {
         ))}
       </div>
       <p>
-        88 鍵已預設快捷鍵 · 琴鍵標示 ⇧ 代表 Shift ·{" "}
-        每個快捷鍵對應一個音符。和弦功能可在琴蓋的「和弦」分頁設定。
+        預設快捷鍵對應 C4–B4，不需要 Shift；用 Page Up / Down 或八度按鈕移動音域。
+        和弦功能可在琴蓋的「和弦」分頁設定。
         風格會即時改變濾波、起音、尾音、力度與殘響，手動演奏和 MIDI 都適用。
       </p>
       <p className="voice-source">

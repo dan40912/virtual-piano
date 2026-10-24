@@ -28,7 +28,16 @@ export const legacyMap: Record<string, number> = Object.fromEntries(
   ["KeyA", "KeyW", "KeyS", "KeyE", "KeyD", "KeyF", "KeyT", "KeyG", "KeyY", "KeyH", "KeyU", "KeyJ"]
     .map((code, index) => [code, 60 + index]),
 );
-export const defaultMap = legacyMap;
+// Home row plays the nine white keys; the upper row fills the seven black keys.
+// C4–D♯5 covers the most useful central range without Shift combinations.
+export const defaultMap: Record<string, number> = Object.fromEntries(
+  [
+    ["KeyA", 60], ["KeyW", 61], ["KeyS", 62], ["KeyE", 63],
+    ["KeyD", 64], ["KeyF", 65], ["KeyT", 66], ["KeyG", 67],
+    ["KeyY", 68], ["KeyH", 69], ["KeyU", 70], ["KeyJ", 71],
+    ["KeyK", 72], ["KeyO", 73], ["KeyL", 74], ["KeyP", 75],
+  ],
+);
 export const demo: Song = {
   title: "小星星 · Twinkle, Twinkle",
   source: "內建示範 · 公版旋律 / 本專案編曲",

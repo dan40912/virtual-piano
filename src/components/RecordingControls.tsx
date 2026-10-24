@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import { recorder } from "../audio/LiveRecorder";
 import type { Song } from "../music/model";
 
-export function RecordingControls({ onPlay }: { onPlay: (song: Song) => void }) {
+export function RecordingControls({
+  onPlay,
+  onRecordingChange,
+}: {
+  onPlay: (song: Song) => void;
+  onRecordingChange?: (recording: boolean) => void;
+}) {
   const [version, refresh] = useState(0);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -11,8 +17,9 @@ export function RecordingControls({ onPlay }: { onPlay: (song: Song) => void }) 
     return () => {
       recorder.onChange = () => {};
       recorder.stop();
+      onRecordingChange?.(false);
     };
-  }, []);
+  }, [onRecordingChange]);
 
   const exportMidi = async () => {
     try {
@@ -58,9 +65,13 @@ export function RecordingControls({ onPlay }: { onPlay: (song: Song) => void }) 
         type="button"
         className={recorder.recording ? "recording-start enabled" : "recording-start"}
         onClick={() => {
-          if (recorder.recording) recorder.stop();
+          if (recorder.recording) {
+            recorder.stop();
+            onRecordingChange?.(false);
+          }
           else {
             recorder.start();
+            onRecordingChange?.(true);
             setError("");
           }
         }}

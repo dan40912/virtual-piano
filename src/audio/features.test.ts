@@ -9,15 +9,18 @@ import {
 import { voiceStyles, styledVelocity } from "./styles";
 import { LiveRecorder } from "./LiveRecorder";
 describe("ergonomic keyboard shortcuts", () => {
-  it("maps one familiar octave without Shift", () => {
-    expect(Object.keys(defaultMap)).toHaveLength(12);
+  it("maps the central 16 semitones without Shift", () => {
+    expect(Object.keys(defaultMap)).toHaveLength(16);
     expect([...Object.values(defaultMap)].sort((a, b) => a - b)).toEqual(
-      Array.from({ length: 12 }, (_, i) => 60 + i),
+      Array.from({ length: 16 }, (_, i) => 60 + i),
     );
     expect(Object.keys(defaultMap).every(validShortcut)).toBe(true);
     expect(Object.keys(defaultMap).some((code) => code.startsWith("Shift+"))).toBe(false);
     expect(defaultMap.KeyA).toBe(60);
     expect(defaultMap.KeyJ).toBe(71);
+    expect(defaultMap.KeyK).toBe(72);
+    expect(defaultMap.KeyL).toBe(74);
+    expect(defaultMap.KeyP).toBe(75);
   });
   it("ignores Shift during playback and rejects Shift shortcuts", () => {
     expect(keyboardBinding({ code: "KeyA", shiftKey: true })).toBe(

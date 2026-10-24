@@ -3,6 +3,28 @@ import type { Song } from "../music/model";
 import { isBlack } from "../music/model";
 import { shortcutLabel } from "../music/keyboard";
 import { player } from "../audio/PlaybackScheduler";
+
+function offsetLeftDifference(from: HTMLElement, to: HTMLElement) {
+  const offsets = new Map<HTMLElement, number>();
+  let node: HTMLElement | null = from;
+  let left = 0;
+  while (node) {
+    offsets.set(node, left);
+    left += node.offsetLeft;
+    node = node.offsetParent as HTMLElement | null;
+  }
+
+  node = to;
+  left = 0;
+  while (node) {
+    const fromLeft = offsets.get(node);
+    if (fromLeft !== undefined) return fromLeft - left;
+    left += node.offsetLeft;
+    node = node.offsetParent as HTMLElement | null;
+  }
+  return 0;
+}
+
 export function Roll({
   song,
   transpose,
@@ -14,6 +36,7 @@ export function Roll({
   octave,
   manual,
   autoPolicy,
+  focusMode = false,
 }: {
   song: Song | null;
   transpose: number;
@@ -25,6 +48,7 @@ export function Roll({
   octave: number;
   manual: boolean;
   autoPolicy?: Record<number, "all" | "bass" | "manual">;
+  focusMode?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const position = useSyncExternalStore(
@@ -35,6 +59,22 @@ export function Roll({
   useEffect(() => {
     const canvas = ref.current!;
     const draw = () => {
+      const focusApp = focusMode
+        ? canvas.closest<HTMLElement>('.app[data-view="focus"]')
+        : null;
+      const pianoKeys = focusApp?.querySelector<HTMLElement>(
+        ".piano-housing .keys",
+      );
+      const pianoScroller = pianoKeys?.parentElement as HTMLElement | null;
+      if (focusMode && pianoScroller) {
+        canvas.style.setProperty(
+          "width",
+          `${pianoScroller.clientWidth}px`,
+          "important",
+        );
+      } else {
+        canvas.style.removeProperty("width");
+      }
       const width = canvas.offsetWidth;
       const height = canvas.offsetHeight;
       canvas.width = width * devicePixelRatio;
@@ -48,12 +88,27 @@ export function Roll({
         (n) => !isBlack(n),
       );
       const unit = Math.max(w, whites.length * 29) / whites.length;
-      const chartBottom = h - 34;
+      const keyGeometry = new Map<number, { left: number; width: number }>();
+      if (pianoKeys) {
+        const keysToCanvas = offsetLeftDifference(pianoKeys, canvas);
+        pianoKeys.querySelectorAll<HTMLElement>(".piano-key[data-midi]").forEach((key) => {
+          keyGeometry.set(Number(key.dataset.midi), {
+            left:
+              keysToCanvas + key.offsetLeft - (pianoScroller?.scrollLeft || 0),
+            width: key.offsetWidth,
+          });
+        });
+      }
+      const aligned = focusMode && keyGeometry.size > 0;
+      const chartBottom = h - (aligned ? 2 : 34);
       ctx.strokeStyle = "#ffffff08";
       for (let i = 0; i <= whites.length; i++) {
         ctx.beginPath();
-        ctx.moveTo(i * unit - scroll, 0);
-        ctx.lineTo(i * unit - scroll, h);
+        const x = aligned
+          ? keyGeometry.get(whites[i])?.left ?? i * unit - scroll
+          : i * unit - scroll;
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, chartBottom);
         ctx.stroke();
       }
       ctx.font = "10px monospace";
@@ -82,9 +137,15 @@ export function Roll({
         const top = bottom - height;
         if (bottom < 0 || top > chartBottom) continue;
         const black = isBlack(midi);
-        const x =
-          (whites.filter((v) => v < midi).length - (black ? 0.32 : 0)) * unit -
-          scroll;
+        const geometry = keyGeometry.get(midi);
+        const x = aligned
+          ? (geometry?.left ?? 0)
+          : (whites.filter((v) => v < midi).length - (black ? 0.32 : 0)) *
+              unit -
+            scroll;
+        const noteWidth = aligned
+          ? (geometry?.width ?? unit)
+          : unit * (black ? 0.64 : 1);
         const policy = autoPolicy?.[n.trackId];
         const automatic = policy === "all" || (policy === "bass" && midi <= 60);
         ctx.fillStyle = autoPolicy
@@ -94,10 +155,17 @@ export function Roll({
           : ["#c9b788", "#85b5a7", "#99a9cf", "#c594a5"][n.trackId % 4];
         ctx.globalAlpha = bottom >= chartBottom ? 0.95 : 0.72;
         ctx.beginPath();
-        ctx.roundRect(x + 2, top, unit * (black ? 0.64 : 1) - 4, height - 2, 3);
+        const horizontalInset = aligned ? 1 : 2;
+        ctx.roundRect(
+          x + horizontalInset,
+          top,
+          Math.max(2, noteWidth - horizontalInset * 2),
+          height - 2,
+          3,
+        );
         ctx.fill();
         const label = shortcuts.get(midi);
-        const keyWidth = unit * (black ? 0.64 : 1) - 6;
+        const keyWidth = noteWidth - 6;
         if (manual && label && height > 13 && keyWidth > 10) {
           ctx.globalAlpha = 0.94;
           ctx.fillStyle = "#161811";
@@ -107,14 +175,15 @@ export function Roll({
       }
       ctx.globalAlpha = 1;
       const mapTop = h - 34;
-      ctx.fillStyle = "#0a0d0a";
-      ctx.fillRect(0, mapTop, w, 34);
-      ctx.strokeStyle = "#c9b78866";
+      ctx.fillStyle = aligned ? "#d7bb79" : "#0a0d0a";
+      if (aligned) ctx.fillRect(0, h - 2, w, 2);
+      else ctx.fillRect(0, mapTop, w, 34);
+      ctx.strokeStyle = aligned ? "#ead39a" : "#c9b78866";
       ctx.beginPath();
-      ctx.moveTo(0, mapTop);
-      ctx.lineTo(w, mapTop);
+      ctx.moveTo(0, aligned ? h - 2 : mapTop);
+      ctx.lineTo(w, aligned ? h - 2 : mapTop);
       ctx.stroke();
-      for (let midi = start; midi < start + count; midi++) {
+      for (let midi = start; !aligned && midi < start + count; midi++) {
         const black = isBlack(midi);
         const x =
           whites.filter((v) => v < midi).length * unit -
@@ -145,7 +214,24 @@ export function Roll({
     draw();
     const observer = new ResizeObserver(draw);
     observer.observe(canvas);
-    return () => observer.disconnect();
+    let observedScroller: HTMLElement | null = null;
+    if (focusMode) {
+      const focusApp = canvas.closest<HTMLElement>('.app[data-view="focus"]');
+      const keys = focusApp?.querySelector<HTMLElement>(
+        ".piano-housing .keys",
+      );
+      const scroller = keys?.parentElement;
+      if (keys) observer.observe(keys);
+      if (scroller) {
+        observedScroller = scroller;
+        observer.observe(scroller);
+        scroller.addEventListener("scroll", draw, { passive: true });
+      }
+    }
+    return () => {
+      observer.disconnect();
+      observedScroller?.removeEventListener("scroll", draw);
+    };
   }, [
     song,
     position,
@@ -159,6 +245,7 @@ export function Roll({
     manual,
     autoPolicy,
     transpose,
+    focusMode,
   ]);
   return (
     <canvas

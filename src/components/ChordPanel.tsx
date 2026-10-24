@@ -321,7 +321,8 @@ export function ChordPanel({
           <button onClick={() => api.current.allOff()}>停止和弦</button>
         </div>
       )}
-      {buttonsSlot ? createPortal(grid, buttonsSlot) : grid}
+      {buttonsSlot ? createPortal(grid, buttonsSlot) : null}
+      <div className="chord-panel-grid">{grid}</div>
       {edit && (
         <button
           onClick={() => {

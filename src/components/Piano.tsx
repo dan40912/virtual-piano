@@ -4,7 +4,6 @@ import {
   useEffect,
   useMemo,
   useRef,
-  useState,
   useSyncExternalStore,
 } from "react";
 import { isBlack, noteName } from "../music/model";
@@ -46,7 +45,7 @@ export const Piano = memo(function Piano({
   const pointers = useRef(new Map<number, number>());
   const ref = useRef<HTMLDivElement>(null);
   const centeredRef = useRef(false);
-  const [whiteKeyWidth, setWhiteKeyWidth] = useState(29);
+  const whiteKeyWidth = useRef(29);
   const bindingByMidi = useMemo(() => {
     const reverse = new Map<number, string>();
     for (const [key, midi] of Object.entries(mapping)) reverse.set(midi, key);
@@ -70,8 +69,12 @@ export const Piano = memo(function Piano({
   };
   useEffect(() => {
     const root = ref.current!;
-    const centerMiddleC = () => {
-      const key = root.querySelector<HTMLElement>('[data-midi="60"]');
+    const centerMappedRange = () => {
+      const mapped = Object.values(mapping);
+      const centerMidi = mapped.length
+        ? Math.round((Math.min(...mapped) + Math.max(...mapped)) / 2)
+        : 60;
+      const key = root.querySelector<HTMLElement>(`[data-midi="${centerMidi}"]`);
       if (!key || root.clientWidth <= 0 || root.scrollWidth <= root.clientWidth)
         return;
       const max = root.scrollWidth - root.clientWidth;
@@ -103,25 +106,29 @@ export const Piano = memo(function Piano({
         ? logicalWidth > 0
           ? Math.max(32, Math.min(84, logicalWidth / 11))
           : 29
-        : 29;
-      setWhiteKeyWidth((current) =>
-        Math.abs(current - nextWidth) < 0.5 ? current : nextWidth,
-      );
-      centerMiddleC();
+        : logicalWidth > 0
+        ? Math.max(36, Math.min(52, logicalWidth / 36))
+        : 40;
+      if (Math.abs(whiteKeyWidth.current - nextWidth) >= 0.5) {
+        whiteKeyWidth.current = nextWidth;
+        const keyRow = root.firstElementChild as HTMLElement | null;
+        if (keyRow) keyRow.style.width = `max(100%, ${whites.length * nextWidth}px)`;
+      }
+      centerMappedRange();
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(root);
     const keys = root.firstElementChild;
     if (keys) observer.observe(keys);
-    window.addEventListener("resize", centerMiddleC);
-    window.addEventListener("orientationchange", centerMiddleC);
+    window.addEventListener("resize", centerMappedRange);
+    window.addEventListener("orientationchange", centerMappedRange);
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", centerMiddleC);
-      window.removeEventListener("orientationchange", centerMiddleC);
+      window.removeEventListener("resize", centerMappedRange);
+      window.removeEventListener("orientationchange", centerMappedRange);
     };
-  }, [count, onBounds, onScroll, whiteKeyWidth, visibleWhiteKeys, rotate]);
+  }, [count, mapping, onBounds, onScroll, visibleWhiteKeys, rotate]);
   useEffect(() => {
     if (ref.current && centeredRef.current) {
       ref.current.scrollLeft = scrollPosition;
@@ -136,7 +143,7 @@ export const Piano = memo(function Piano({
     >
       <div
         className="keys"
-        style={{ width: `max(100%, ${whites.length * whiteKeyWidth}px)` }}
+        style={{ width: `max(100%, ${whites.length * whiteKeyWidth.current}px)` }}
         onPointerDown={(e) => {
           const key = (e.target as HTMLElement).closest<HTMLElement>(
             "[data-midi]",
@@ -189,7 +196,7 @@ export const Piano = memo(function Piano({
               title={`${noteName(n)} · ${shortcutLabel(bindingByMidi.get(n) || "未綁定")}`}
               key={n}
               data-midi={n}
-              className={`piano-key ${black ? "black" : "white"} ${visibleActive.has(n) ? "pressed" : ""} ${expected.includes(n) ? "expected" : ""}`}
+              className={`piano-key ${black ? "black" : "white"} ${bindingByMidi.has(n) ? "mapped" : ""} ${visibleActive.has(n) ? "pressed" : ""} ${expected.includes(n) ? "expected" : ""}`}
               style={{
                 left: `${(wi - (black ? 0.32 : 0)) * width}%`,
                 width: `${width * (black ? 0.64 : 1)}%`,

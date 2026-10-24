@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { defaultMap } from "./music/model";
+import { defaultMap, legacyMap } from "./music/model";
 import { aChordMap } from "./music/chords";
 import { completeMapping } from "./music/keyboard";
 import type { PianoStyle } from "./audio/styles";
@@ -46,7 +46,7 @@ export const useSettings = create<Settings>()(
     }),
     {
       name: "piano-studio-settings-v1",
-      version: 7,
+      version: 8,
       migrate: (state) => {
         const old = state as Partial<Settings>;
         const migrated = { ...old } as Partial<Settings> & {
@@ -55,9 +55,13 @@ export const useSettings = create<Settings>()(
         delete migrated.mobileLayout;
         const simplifyMapping = (mapping?: Record<string, number>) => {
           if (!mapping) return defaultMap;
+          const keys = Object.keys(mapping);
+          const isPreviousDefault =
+            keys.length === Object.keys(legacyMap).length &&
+            Object.entries(legacyMap).every(([key, note]) => mapping[key] === note);
+          if (isPreviousDefault) return defaultMap;
           // Earlier defaults assigned the full piano with Shift combinations.
           // Replace that generated layout instead of carrying its scattered keys forward.
-          const keys = Object.keys(mapping);
           const wasGeneratedDefault =
             keys.length === 24 && mapping.KeyZ === 48 && mapping.KeyQ === 60 && mapping.KeyU === 71;
           if (keys.some((key) => key.startsWith("Shift+")) || wasGeneratedDefault)

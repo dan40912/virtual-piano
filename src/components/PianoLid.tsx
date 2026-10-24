@@ -9,6 +9,7 @@ export interface LidTab {
 export function PianoLid({
   open,
   rotate = false,
+  focusView = false,
   player,
   onToggle,
   tabs,
@@ -21,6 +22,7 @@ export function PianoLid({
 }: {
   open: boolean;
   rotate?: boolean;
+  focusView?: boolean;
   player?: ReactNode;
   onToggle: () => void;
   tabs: LidTab[];
@@ -365,8 +367,8 @@ export function PianoLid({
         className="lid-tray"
         id="piano-lid-tray"
         ref={shell}
-        inert={!open && !phoneLayout}
-        aria-hidden={!open && !phoneLayout}
+        inert={!open && !phoneLayout && !focusView}
+        aria-hidden={!open && !phoneLayout && !focusView}
         style={{ height: 0 }}
       >
         <div className="lid-tray-inner" ref={inner}>

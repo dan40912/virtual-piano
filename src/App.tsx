@@ -25,6 +25,7 @@ import { engine } from "./audio/PianoEngine";
 import { player } from "./audio/PlaybackScheduler";
 import { useSettings } from "./store";
 import { useStageOrientation } from "./hooks/useStageOrientation";
+import { useFocusView } from "./hooks/useFocusView";
 import { useLidHint } from "./hooks/useLidHint";
 import { toStage } from "./stage/toStage";
 import { mobileToolHeight } from "./stage/mobileToolHeight";
@@ -45,7 +46,6 @@ import {
   validateHymnal,
 } from "./music/importers";
 import {
-  Piano as PianoIcon,
   Settings2,
   Volume2,
   Sun,
@@ -59,11 +59,9 @@ import {
   Repeat2,
   ChevronDown,
   Music2,
-  Check,
   Headphones,
   X,
   Download,
-  SlidersHorizontal,
   Minimize2,
 } from "lucide-react";
 const GITHUB_URL = "https://github.com/dan40912/virtual-piano";
@@ -132,12 +130,22 @@ export default function App() {
     /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const [lidOpen, setLidOpen] = useState(false);
+  const [mobilePianoExpanded, setMobilePianoExpanded] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches,
+  );
   const [stage, setStage] = useState<"poster" | "playing">("poster");
+  const [isRecording, setIsRecording] = useState(false);
   const [urlInputActive, setUrlInputActive] = useState(false);
   const { rotate, fullscreen, requestLandscape, releaseOrientationLock } =
     useStageOrientation(stage, urlInputActive);
   const stageRef = useRef<HTMLDivElement>(null);
   const stageHeight = rotate ? window.innerWidth : window.innerHeight;
+  const focusCompact = rotate || window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches;
+  const focusKeyboardHeight = Math.max(
+    110,
+    Math.min(250, stageHeight * (focusCompact ? 0.42 : window.innerWidth < 768 ? 0.32 : 0.25)),
+  );
   const rotateHintSeen = useRef(false);
   const [rotateHintVisible, setRotateHintVisible] = useState(false);
   const [lidTab, setLidTab] = useState("stand");
@@ -204,12 +212,22 @@ export default function App() {
   const [scrollMax, setScrollMax] = useState(0);
   const [panel, setPanel] = useState(""),
     [selected, setSelected] = useState<number | null>(null),
+    [pendingBinding, setPendingBinding] = useState<string | null>(null),
     [warning, setWarning] = useState(""),
     [view, setView] = useState("roll"),
     [zoom, setZoom] = useState(65),
     [rollExpanded, setRollExpanded] = useState(true),
     [manualTranspose, setManualTranspose] = useState(false),
     [profile, setProfile] = useState("我的配置");
+  const focusView = useFocusView({
+    lidTab,
+    lidOpen,
+    visualView: view,
+    setLidOpen,
+    setLidTab,
+    setVisualView: setView,
+  });
+  const [focusMoreOpen, setFocusMoreOpen] = useState(false);
   const [step, setStep] = useState(0),
     [score, setScore] = useState({ correct: 0, wrong: 0, offset: 0 });
   const playToken = useRef(0);
@@ -439,6 +457,14 @@ export default function App() {
     setStage("playing");
     if (stageRef.current) void requestLandscape(stageRef.current);
   };
+  const enterFocusView = () => {
+    focusView.enter();
+    setFocusMoreOpen(false);
+  };
+  const leaveFocusView = () => {
+    focusView.exit();
+    setFocusMoreOpen(false);
+  };
   const openLid = () => {
     lidHint.dismiss();
     setLidOpen(true);
@@ -514,6 +540,7 @@ export default function App() {
       if (e.code === "Escape" && panel) {
         setPanel("");
         setSelected(null);
+        setPendingBinding(null);
         return;
       }
       if (e.repeat || e.code.startsWith("Shift")) return;
@@ -527,30 +554,31 @@ export default function App() {
         target.isContentEditable
       )
         return;
+      const focusNeedsShift = Boolean(
+        settings.mapping.KeyF !== undefined || settings.chordMapping.KeyF,
+      );
+      const desktopKeyboard = window.matchMedia(
+        "(hover: hover) and (pointer: fine)",
+      ).matches;
+      if (
+        e.code === "KeyF" &&
+        panel === "" &&
+        selected === null &&
+        desktopKeyboard &&
+        e.shiftKey === focusNeedsShift
+      ) {
+        e.preventDefault();
+        enterFocusView();
+        return;
+      }
+      if (panel === "keyboard" && pendingBinding !== null) {
+        e.preventDefault();
+        return;
+      }
       if (panel === "keyboard" && selected !== null) {
         e.preventDefault();
         if (["Escape", "Tab"].includes(e.code)) return;
-        const map = { ...settings.mapping };
-        if (!validShortcut(code)) {
-          setWarning("請使用不需 Shift 的字母、數字或符號鍵");
-          return;
-        }
-        const previous = map[code];
-        if (previous !== undefined && previous !== selected) {
-          setWarning(
-            `${shortcutLabel(code)} 已綁定 ${noteName(previous)}，請先解除該綁定。`,
-          );
-          return;
-        }
-        if (e.code === settings.pedal) {
-          setWarning("此按鍵已設定為延音踏板");
-          return;
-        }
-        for (const key in map) if (map[key] === selected) delete map[key];
-        map[code] = selected;
-        settings.set({ mapping: map });
-        setWarning(`${shortcutLabel(code)} → ${noteName(selected)} 已儲存`);
-        setSelected(null);
+        bindShortcut(code, selected);
         return;
       }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -577,6 +605,12 @@ export default function App() {
       if (n !== undefined) {
         e.preventDefault();
         void downRef.current(e.code, n + settings.octave * 12);
+      } else if (validShortcut(code) && panel === "") {
+        e.preventDefault();
+        setPendingBinding(code);
+        setSelected(null);
+        setPanel("keyboard");
+        setWarning(`${shortcutLabel(code)} 尚未綁定，請點選要指定的琴鍵。`);
       }
     };
     const blur = () => {
@@ -603,8 +637,12 @@ export default function App() {
     settings.pedal,
     panel,
     selected,
+    pendingBinding,
     release,
     panic,
+    settings.mapping,
+    settings.chordMapping,
+    enterFocusView,
   ]);
   useEffect(() => {
     player.onFrame = (p) => {
@@ -748,6 +786,36 @@ export default function App() {
       n + settings.octave * 12,
     ]),
   );
+  const bindShortcut = (code: string, midi: number) => {
+    if (!validShortcut(code)) {
+      setWarning("請使用字母、數字或符號鍵");
+      return;
+    }
+    if (code === settings.pedal) {
+      setWarning("此按鍵已設定為延音踏板");
+      return;
+    }
+    const map = { ...settings.mapping };
+    const occupied = map[code];
+    if (occupied !== undefined && occupied !== midi) {
+      setWarning(`${shortcutLabel(code)} 已綁定 ${noteName(occupied)}，請先解除該綁定。`);
+      return;
+    }
+    for (const key in map) if (map[key] === midi) delete map[key];
+    map[code] = midi;
+    settings.set({ mapping: map });
+    setWarning(`${shortcutLabel(code)} → ${noteName(midi)} 已儲存`);
+    setSelected(null);
+    setPendingBinding(null);
+  };
+  const selectMappingNote = (midi: number) => {
+    if (pendingBinding) {
+      bindShortcut(pendingBinding, midi);
+      return;
+    }
+    setSelected(midi);
+    setWarning("");
+  };
   const allActive = new Set([...active, ...player.getActiveNotesSnapshot()]);
   const manualFollow =
     (mode === "practice" && practiceType === "rhythm") ||
@@ -781,7 +849,7 @@ export default function App() {
         .reverse()
         .find((t) => t.time <= position)?.bpm || song.tempo
     : 100;
-  const hasMiniPlayback = Boolean(song && (playing || position > 0));
+  const hasMiniPlayback = Boolean(song && stage === "playing" && !lidOpen);
   const setLoopAFromPosition = (next: number) =>
     setLoopA(Math.max(0, Math.min(loopB - 0.1, next)));
   const setLoopBFromPosition = (next: number) =>
@@ -789,9 +857,18 @@ export default function App() {
   const playbackBar = (
           <div
             className={`player ${moreControlsOpen ? "more-controls-open" : ""} ${!lidOpen && hasMiniPlayback ? "player-mini" : ""}`}
-            data-visible={song && (lidOpen || (stage === "playing" && hasMiniPlayback)) ? "true" : "false"}
+            data-visible={song && (lidOpen || hasMiniPlayback) ? "true" : "false"}
           >
             <div className="playback-heading">
+              <button
+                type="button"
+                className="focus-entry"
+                aria-label="進入專注模式"
+                title={`專注模式（${settings.mapping.KeyF !== undefined || settings.chordMapping.KeyF ? "Shift+F" : "F"}）`}
+                onClick={enterFocusView}
+              >
+                <Maximize2 size={14} /> 專注模式
+              </button>
               <strong>{song?.title || "自由演奏"}</strong>
               <button
                 type="button"
@@ -833,11 +910,6 @@ export default function App() {
                       player.stop(false);
                       setPlaying(false);
                       setActive(new Set());
-                    } else if (mode === "free") {
-                      setMode("auto");
-                      setModeNotice("已切換到自動模式");
-                      setStatus("已切換到自動模式");
-                      void play("auto");
                     } else void play();
                   }}
                 >
@@ -864,7 +936,7 @@ export default function App() {
               <div className="playback-settings">
                 <label>
                   速度{" "}
-                  <StageStepper label="速度倍率" value={speed} min={0.25} max={2} step={0.25} onChange={setSpeed} format={(n) => `${n.toFixed(2)}×`} />
+                  <StageStepper label="速度倍率" value={speed} min={0.25} max={2} step={0.05} onChange={setSpeed} format={(n) => `${n.toFixed(2)}×`} />
                 </label>
                 <label>
                   轉調{" "}
@@ -916,7 +988,9 @@ export default function App() {
       ref={appRef}
       className={`app ${immersive ? "immersive-mode" : ""}`}
       data-stage={stage}
+      data-view={focusView.active ? "focus" : "studio"}
       data-lid={lidOpen ? "open" : "closed"}
+      data-mobile-piano-expanded={mobilePianoExpanded ? "true" : "false"}
       data-rotate={rotate ? "true" : "false"}
       data-lid-tab={lidTab}
       data-chord-enabled={settings.chordEnabled ? "true" : "false"}
@@ -1010,6 +1084,7 @@ export default function App() {
               // Reserve 44px for the handle, 24px for the splitter, 44px for playback,
               // and 110px for the minimum keyboard deck. Chords reserve 38px above it.
               "--mobile-tool-height": `${mobileToolHeight(stageHeight, splitRatio, settings.chordEnabled && lidTab === "chord" ? 38 : 0)}px`,
+              "--focus-keyboard-height": `${focusKeyboardHeight}px`,
             } as CSSProperties
           }
         >
@@ -1017,9 +1092,90 @@ export default function App() {
             <button type="button" onClick={startStage}>開始彈奏</button>
             <span>進入演奏視角</span>
           </div>
+          <div
+            className={`focus-toolbar ${focusMoreOpen ? "focus-more-open" : ""}`}
+            role="toolbar"
+            aria-label="專注檢視工具列"
+          >
+            <button type="button" className="focus-leave" aria-label="離開專注模式" onClick={leaveFocusView}>
+              <span aria-hidden="true">←</span><span>離開</span>
+            </button>
+            <strong className="focus-song-title" title={song?.title || "即興演奏"}>
+              {song?.title || "即興演奏"}
+            </strong>
+            <button
+              type="button"
+              className="focus-more-toggle"
+              aria-label={focusMoreOpen ? "收起專注設定" : "更多專注設定"}
+              aria-expanded={focusMoreOpen}
+              onClick={() => setFocusMoreOpen((open) => !open)}
+            >
+              ⋯
+            </button>
+            <div className="focus-more-controls">
+              <div className="focus-mode-control">
+                <span>模式</span>
+                <StageSegmented
+                  label="專注檢視模式"
+                  value={mode}
+                  options={[
+                    { value: "auto", label: "自動" },
+                    { value: "accompaniment", label: "伴奏" },
+                    { value: "practice", label: "練習" },
+                  ]}
+                  onChange={(next) => setMode(next)}
+                />
+              </div>
+              <label className="focus-speed-control">
+                <span>速度 {Math.round(speed * 100)}%</span>
+                <StageSlider aria-label="專注檢視速度" min={0.25} max={2} step={0.05} value={speed} onChange={setSpeed} rotate={rotate} />
+              </label>
+              {song && song.tracks.length > 1 && (
+                <div className="focus-track-control" role="group" aria-label="音軌">
+                  {song.tracks.map((trackName, index) => {
+                    const enabled = !muted.includes(index);
+                    return (
+                      <button
+                        type="button"
+                        key={`${trackName}-${index}`}
+                        aria-pressed={enabled}
+                        title={trackName}
+                        onClick={() => setMuted((current) => enabled ? [...current, index] : current.filter((track) => track !== index))}
+                      >
+                        {trackName}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <label className="focus-volume-control">
+                <Volume2 size={15} aria-hidden="true" />
+                <StageSlider aria-label="專注檢視音量" min={0} max={1} step={0.01} value={settings.volume} onChange={(volume) => settings.set({ volume })} rotate={rotate} />
+              </label>
+            </div>
+            <button
+              type="button"
+              className="focus-play-toggle"
+              disabled={!song}
+              onClick={() => {
+                if (playing) {
+                  player.stop(false);
+                  setPlaying(false);
+                  setActive(new Set());
+                } else void play();
+              }}
+            >
+              {playing ? <Pause size={15} /> : <Play size={15} />}
+              <span>{playing ? "暫停" : "播放"}</span>
+            </button>
+            <button type="button" className="focus-restart" disabled={!song} onClick={() => { stop(); void play(); }}>
+              <RotateCcw size={15} /> <span>重來</span>
+            </button>
+          </div>
           <PianoLid
             open={lidOpen}
             rotate={rotate}
+            focusView={focusView.active}
             onToggle={() => {
               if (lidOpen) setLidOpen(false);
               else openLid();
@@ -1045,7 +1201,7 @@ export default function App() {
                     className={`grand-workbench ${rollExpanded ? "roll-expanded" : ""}`}
                   >
                     <div className="stand-mode-controls" aria-label="演奏模式">
-                      {([["auto", "自動"], ["accompaniment", "伴奏"], ["free", "自由"], ["practice", "練習"]] as const).map(([id, label]) => (
+                      {([["auto", "自動"], ["accompaniment", "伴奏"], ["practice", "練習"]] as const).map(([id, label]) => (
                         <button key={id} className={mode === id ? "selected" : ""} aria-pressed={mode === id} onClick={() => {
                           if (mode === id) return;
                           stop();
@@ -1058,7 +1214,6 @@ export default function App() {
                         <StageSegmented label="練習方式" value={practiceType} options={[{ value: "wait", label: "等待正確音符" }, { value: "rhythm", label: "節奏練習" }]} onChange={(next) => { stop(); resetPractice(); setPracticeType(next); }} />
                         {practiceType === "rhythm" && <StageSegmented label="節奏容許誤差" value={tolerance} options={[{ value: 0.1, label: "±100ms" }, { value: 0.2, label: "±200ms" }, { value: 0.3, label: "±300ms" }]} onChange={setTolerance} />}
                       </>}
-                      <button onClick={() => setPanel("tracks")}>音軌管理</button>
                     </div>
                     <section className="music-desk" aria-label="樂譜架">
                       <div className="desk-crest">
@@ -1169,24 +1324,17 @@ export default function App() {
                                   )}
                                   {rollExpanded ? "縮小" : "放大音符區"}
                                 </button>
+                                <button
+                                  type="button"
+                                  className="roll-focus-entry"
+                                  aria-label="進入專注模式"
+                                  title={`專注模式（${settings.mapping.KeyF !== undefined || settings.chordMapping.KeyF ? "Shift+F" : "F"}）`}
+                                  onClick={enterFocusView}
+                                >
+                                  <Maximize2 size={13} /> 專注模式
+                                </button>
                               </div>
                             </div>
-                            <Roll
-                              song={song}
-                              transpose={transpose}
-                              count={settings.keyCount}
-                              zoom={zoom}
-                              muted={muted}
-                              scroll={scroll}
-                              mapping={settings.mapping}
-                              octave={settings.octave}
-                              manual={manualFollow}
-                              autoPolicy={
-                                mode === "accompaniment"
-                                  ? autoPolicy
-                                  : undefined
-                              }
-                            />
                             {!song && (
                               <p className="empty-roll">
                                 匯入歌曲，讓旋律躍然眼前。
@@ -1223,6 +1371,21 @@ export default function App() {
                             )}
                           </div>
                         )}
+                        <div className="roll-focus-content" hidden={view !== "roll"}>
+                          <Roll
+                            song={song}
+                            transpose={transpose}
+                            count={settings.keyCount}
+                            zoom={zoom}
+                            muted={muted}
+                            scroll={scroll}
+                            mapping={settings.mapping}
+                            octave={settings.octave}
+                            manual={manualFollow}
+                            autoPolicy={mode === "accompaniment" ? autoPolicy : undefined}
+                            focusMode={focusView.active}
+                          />
+                        </div>
                       </div>
                       <div className="music-desk-ledge" aria-hidden="true" />
                     </section>
@@ -1351,7 +1514,7 @@ export default function App() {
                       </label>
                       <button className="key-binding" onClick={() => setPanel("keyboard")}>鍵盤設定</button>
                       <button onClick={() => setPanel("audio")}>音訊設定</button>
-                      <button onClick={() => setPanel("tracks")}>音軌管理</button>
+                      {song && song.tracks.length > 1 && <button onClick={() => setPanel("tracks")}>音軌</button>}
                     </div>
                   </div>
                 ),
@@ -1377,7 +1540,10 @@ export default function App() {
                       <p className="score-loading">正在載入錄製工具…</p>
                     }
                   >
-                    <LazyRecordingControls onPlay={(recording) => void playRecording(recording)} />
+                    <LazyRecordingControls
+                      onPlay={(recording) => void playRecording(recording)}
+                      onRecordingChange={setIsRecording}
+                    />
                   </Suspense>
                 ) : null,
               },
@@ -1393,6 +1559,11 @@ export default function App() {
               <span className="range-label">
                 {settings.keyCount === 88 ? "A0 — C8" : "C2 — C7"}
               </span>
+              {isRecording && (
+                <span className="recording-live-badge" role="status">
+                  <i aria-hidden="true" />錄製中
+                </span>
+              )}
             </div>
             <div className="felt" />
             <div className="chord-buttons-slot" />
@@ -1403,7 +1574,7 @@ export default function App() {
               expected={expected}
               onDown={handlePianoDown}
               onUp={release}
-              onSelect={setSelected}
+              onSelect={selectMappingNote}
               mappingMode={panel === "keyboard"}
               autoEnabled={mode === "auto" || mode === "accompaniment"}
               onScroll={setScroll}
@@ -1414,6 +1585,15 @@ export default function App() {
             />
             <div className="keyboard-zoom-control" aria-label="手機橫向鍵盤縮放">
               <span>{settings.visibleWhiteKeys} 個白鍵</span>
+              <button
+                type="button"
+                className="keyboard-zoom-preset"
+                onClick={() => settings.set({ visibleWhiteKeys: 14 })}
+                aria-label="放大琴鍵，顯示 14 個白鍵"
+                title="放大琴鍵"
+              >
+                大鍵
+              </button>
               <StageSlider
                 aria-label="調整手機橫向顯示白鍵數"
                 min={14}
@@ -1423,6 +1603,14 @@ export default function App() {
                 onChange={(visibleWhiteKeys) => settings.set({ visibleWhiteKeys })}
                 rotate={rotate}
               />
+              <button
+                type="button"
+                className="keyboard-focus-toggle"
+                aria-pressed={mobilePianoExpanded}
+                onClick={() => setMobilePianoExpanded((expanded) => !expanded)}
+              >
+                {mobilePianoExpanded ? "顯示曲目" : "放大琴鍵"}
+              </button>
             </div>
             <div className="octave-side-controls" aria-label="八度控制">
               <button aria-label="降低八度" onClick={() => settings.set({ octave: Math.max(-2, settings.octave - 1) })}>−</button>
@@ -1457,7 +1645,6 @@ export default function App() {
               {[
                 ["auto", "自動演奏"],
                 ["accompaniment", "自動伴奏"],
-                ["free", "自由演奏"],
                 ["practice", "練習模式"],
               ].map(([id, label]) => (
                 <button
@@ -1472,8 +1659,6 @@ export default function App() {
                 >
                   {id === "auto" ? (
                     <Play size={13} />
-                  ) : id === "free" ? (
-                    <PianoIcon size={14} />
                   ) : (
                     <Music2 size={14} />
                   )}{" "}
@@ -1486,13 +1671,8 @@ export default function App() {
                 ? "跟隨每一個音符，感受音樂的呼吸。"
                 : mode === "accompaniment"
                   ? "選擇自動播放的部分；其餘音符由你親自彈奏。"
-                  : mode === "free"
-                    ? "使用電腦鍵盤、滑鼠或觸控，盡情彈奏。"
-                    : "跟隨提示練習，讓每次演奏都更進一步。")}
+                  : "跟隨提示練習，讓每次演奏都更進一步。")}
             </span>
-            <button onClick={() => setPanel("tracks")}>
-              <SlidersHorizontal size={15} /> 音軌
-            </button>
           </div>
           <div
             className="mobile-score-splitter"
@@ -1654,14 +1834,6 @@ export default function App() {
                   );
                 })}
               </div>
-              <div className="accompaniment-legend">
-                <span>
-                  <i className="auto" /> 自動播放
-                </span>
-                <span>
-                  <i className="hand" /> 請你手彈（Piano Roll 會標出電腦按鍵）
-                </span>
-              </div>
             </div>
           )}
           {mode === "practice" && (
@@ -1711,23 +1883,6 @@ export default function App() {
             </p>
           )}
         </section>
-        <div className="below">
-          <span>
-            <Check size={14} />
-            真實鋼琴取樣
-          </span>
-          <span>
-            <Check size={14} />
-            支援多點觸控
-          </span>
-          <span>
-            <Check size={14} />
-            無需登入・音樂留在你的裝置
-          </span>
-          <span className="shortcut">
-            小提示：A–J 演奏，Page Up / Down 切換八度
-          </span>
-        </div>
       </main>
       <footer>
         <span>VIRTUAL PIANO STUDIO</span>
@@ -1809,6 +1964,7 @@ export default function App() {
           onClick={() => {
             setPanel("");
             setSelected(null);
+            setPendingBinding(null);
           }}
         >
           <section
@@ -1831,6 +1987,7 @@ export default function App() {
                 onClick={() => {
                   setPanel("");
                   setSelected(null);
+                    setPendingBinding(null);
                 }}
               >
                 <X size={20} />
@@ -1839,18 +1996,16 @@ export default function App() {
             {panel === "keyboard" ? (
               <>
                 <p>
-                  下排 Z S X D C V G B H N J M、上排 Q 2 W 3 E R 5 T 6 Y 7 U，
-                  A W S E D F T G Y H U J 對應 C4–B4，不需要 Shift。用 Page Up / Down 或琴鍵旁的八度按鈕移到其他音域；點音符可重新綁定。
+                  {pendingBinding
+                    ? `按鍵 ${shortcutLabel(pendingBinding)} 尚未綁定。點選下方琴鍵，就能把它指定給該音。`
+                    : "點選下方琴鍵，再按想指定的電腦按鍵即可完成綁定。"}
                 </p>
                 <div className="mapping-grid">
                   {Array.from({ length: 88 }, (_, i) => i + 21).map((n) => (
                     <button
                       key={n}
                       className={selected === n ? "selected" : ""}
-                      onClick={() => {
-                        setSelected(n);
-                        setWarning("");
-                      }}
+                      onClick={() => selectMappingNote(n)}
                     >
                       {noteName(n)}
                       <small>
@@ -1862,7 +2017,7 @@ export default function App() {
                   ))}
                 </div>
                 <p role="status">
-                  {selected ? `等待為 ${noteName(selected)} 指定按鍵…` : ""}{" "}
+                  {selected ? `已選 ${noteName(selected)}，按下要綁定的電腦按鍵。` : ""}{" "}
                   {warning}
                 </p>
                 <div className="modal-actions">
@@ -1880,6 +2035,11 @@ export default function App() {
                   >
                     解除選取
                   </button>
+                  {pendingBinding && (
+                    <button onClick={() => { setPendingBinding(null); setWarning(""); }}>
+                      取消快速綁定
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       settings.set({ mapping: defaultMap });
