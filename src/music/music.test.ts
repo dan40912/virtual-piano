@@ -17,12 +17,12 @@ describe("piano geometry and mapping", () => {
     expect(noteName(keys[0])).toBe("A0");
     expect(noteName(keys[87])).toBe("C8");
   });
-  it("maps default physical keys in semitone order", () => {
-    expect(Object.values(defaultMap).slice(0, 17)).toEqual(
-      Array.from({ length: 17 }, (_, i) => 60 + i),
+  it("maps one unmodified QWERTY octave in semitone order", () => {
+    expect(Object.values(defaultMap)).toEqual(
+      Array.from({ length: 12 }, (_, i) => 60 + i),
     );
     expect(defaultMap.KeyA).toBe(60);
-    expect(defaultMap.KeyF).toBe(65);
+    expect(defaultMap.KeyJ).toBe(71);
   });
   it("groups actual simultaneous notes and respects track mute", () => {
     expect(groups(demo)[0]).toHaveLength(3);

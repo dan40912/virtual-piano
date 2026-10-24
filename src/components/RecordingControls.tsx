@@ -2,7 +2,8 @@ import { Midi } from "@tonejs/midi";
 import { useEffect, useState } from "react";
 import { recorder } from "../audio/LiveRecorder";
 import type { Song } from "../music/model";
-export function RecordingControls({ onLoad }: { onLoad: (s: Song) => void }) {
+
+export function RecordingControls({ onPlay }: { onPlay: (song: Song) => void }) {
   const [version, refresh] = useState(0);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -12,6 +13,7 @@ export function RecordingControls({ onLoad }: { onLoad: (s: Song) => void }) {
       recorder.stop();
     };
   }, []);
+
   const exportMidi = async () => {
     try {
       const song = recorder.song();
@@ -32,8 +34,8 @@ export function RecordingControls({ onLoad }: { onLoad: (s: Song) => void }) {
       );
       const data = midi.toArray();
       const blob = new Blob([new Uint8Array(data)], { type: "audio/midi" });
-      const url = URL.createObjectURL(blob),
-        a = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
       a.href = url;
       a.download = "my-performance.mid";
       a.click();
@@ -42,25 +44,19 @@ export function RecordingControls({ onLoad }: { onLoad: (s: Song) => void }) {
       setError((e as Error).message);
     }
   };
+
   return (
-    <section
-      className="recording-controls"
-      aria-label="錄製自己的演奏"
-      data-version={version}
-    >
-      <div>
+    <section className="recording-controls" aria-label="錄製自己的演奏" data-version={version}>
+      <header className="recording-heading">
         <strong>
-          <span
-            className={
-              recorder.recording ? "record-dot recording" : "record-dot"
-            }
-          />
+          <span className={recorder.recording ? "record-dot recording" : "record-dot"} />
           我的演奏
         </strong>
-        <small>錄下你的單音、和弦與延音；不錄製自動播放的歌曲。</small>
-      </div>
+        <small>開始錄製後直接彈琴；結束後可播放剛才的演奏。</small>
+      </header>
       <button
-        className={recorder.recording ? "enabled" : ""}
+        type="button"
+        className={recorder.recording ? "recording-start enabled" : "recording-start"}
         onClick={() => {
           if (recorder.recording) recorder.stop();
           else {
@@ -69,27 +65,30 @@ export function RecordingControls({ onLoad }: { onLoad: (s: Song) => void }) {
           }
         }}
       >
-        {recorder.recording ? "結束錄製" : "開始新錄製"}
+        {recorder.recording ? "■ 結束錄製" : "● 開始錄製"}
       </button>
-      <span role="status">
-        {recorder.recording ? "錄製中" : `${recorder.notes.length} 個音符`}
-        {error}
+      <span className="recording-status" role="status">
+        {recorder.recording ? "正在錄製，請在下方琴鍵演奏" : `已錄下 ${recorder.notes.length} 個音符`}
+        {error && ` · ${error}`}
       </span>
-      <button
-        disabled={recorder.recording || !recorder.notes.length}
-        onClick={() => onLoad(recorder.song())}
-      >
-        載入回放
-      </button>
-      <button
-        disabled={recorder.recording || !recorder.notes.length}
-        onClick={() => void exportMidi()}
-      >
-        匯出 MIDI
-      </button>
-      <small>
-        新錄製會取代上一段；匯出的是演奏事件，音色不包含在 MIDI 裡。
-      </small>
+      <div className="recording-actions">
+        <button
+          type="button"
+          className="recording-play"
+          disabled={recorder.recording || !recorder.notes.length}
+          onClick={() => onPlay(recorder.song())}
+        >
+          ▶ 播放錄音
+        </button>
+        <button
+          type="button"
+          disabled={recorder.recording || !recorder.notes.length}
+          onClick={() => void exportMidi()}
+        >
+          匯出 MIDI
+        </button>
+      </div>
+      <small className="recording-footnote">開始新錄製會取代上一段；錄音暫存在目前瀏覽器分頁。</small>
     </section>
   );
 }

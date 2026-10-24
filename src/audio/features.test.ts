@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defaultMap, legacyMap } from "../music/model";
+import { defaultMap } from "../music/model";
 import {
   completeMapping,
   keyboardBinding,
@@ -8,29 +8,32 @@ import {
 } from "../music/keyboard";
 import { voiceStyles, styledVelocity } from "./styles";
 import { LiveRecorder } from "./LiveRecorder";
-describe("88-key shortcuts", () => {
-  it("covers every note exactly once without browser shortcuts", () => {
-    expect(Object.keys(defaultMap)).toHaveLength(88);
+describe("ergonomic keyboard shortcuts", () => {
+  it("maps one familiar octave without Shift", () => {
+    expect(Object.keys(defaultMap)).toHaveLength(12);
     expect([...Object.values(defaultMap)].sort((a, b) => a - b)).toEqual(
-      Array.from({ length: 88 }, (_, i) => 21 + i),
+      Array.from({ length: 12 }, (_, i) => 60 + i),
     );
     expect(Object.keys(defaultMap).every(validShortcut)).toBe(true);
-    for (const [code, note] of Object.entries(legacyMap))
-      expect(defaultMap[code]).toBe(note);
+    expect(Object.keys(defaultMap).some((code) => code.startsWith("Shift+"))).toBe(false);
+    expect(defaultMap.KeyA).toBe(60);
+    expect(defaultMap.KeyJ).toBe(71);
   });
-  it("supports Shift labels and physical modifier handling", () => {
+  it("ignores Shift during playback and rejects Shift shortcuts", () => {
     expect(keyboardBinding({ code: "KeyA", shiftKey: true })).toBe(
-      "Shift+KeyA",
+      "KeyA",
     );
     expect(shortcutLabel("Shift+KeyA")).toBe("⇧A");
     expect(shortcutLabel("Semicolon")).toBe(";");
     expect(validShortcut("Control+KeyA")).toBe(false);
+    expect(validShortcut("Shift+KeyA")).toBe(false);
   });
-  it("fills legacy/custom layouts without overwriting assigned notes", () => {
-    const m = completeMapping({ KeyQ: 60 });
+  it("keeps explicit custom bindings and drops Shift bindings", () => {
+    const m = completeMapping({ KeyQ: 60, KeyZ: 48, "Shift+KeyA": 61 });
     expect(m.KeyQ).toBe(60);
-    expect(new Set(Object.values(m)).size).toBe(88);
-    expect(Object.keys(m)).toHaveLength(88);
+    expect(m.KeyZ).toBe(48);
+    expect(Object.keys(m)).toHaveLength(2);
+    expect(Object.values(m)).not.toContain(61);
   });
 });
 describe("audible voice presets", () => {

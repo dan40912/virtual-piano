@@ -2,3 +2,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 .env*
+
+# Local working copies and exports (not part of the app)
+/Virtual-Piano/
+/site-publish/
+/.sites-stage/
+*.tar
+# Root-level preview screenshots; README images live in docs/screenshots/
+/*.png

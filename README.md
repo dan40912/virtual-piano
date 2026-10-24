@@ -19,8 +19,7 @@
 
 <br>
 
-<!-- 部署後把下面網址換成你的 GitHub Pages 網址 -->
-**[▶ 線上試玩](https://YOUR_NAME.github.io/virtual-piano-studio/)** · [30 秒上手](#-30-秒上手) · [鍵盤對照表](#-鍵盤對照表) · [自己架一台](#-自己架一台)
+**[▶ 線上試玩](https://dan40912.github.io/virtual-piano/)** · [30 秒上手](#-30-秒上手) · [鍵盤對照表](#-鍵盤對照表) · [自己架一台](#-自己架一台)
 
 <br>
 
@@ -215,11 +214,11 @@ A S D F G H J K L ;       ← 白鍵（中央 C 從 A 開始）
 需要 **Node.js 20.19+** 或 **22.12+**。
 
 ```bash
-git clone https://github.com/YOUR_NAME/virtual-piano-studio.git
+git clone https://github.com/dan40912/virtual-piano.git
 ```
 
 ```bash
-cd virtual-piano-studio
+cd virtual-piano
 ```
 
 ```bash
@@ -308,6 +307,12 @@ src/
 <summary><b>手機上延遲大嗎？</b></summary>
 
 依裝置與瀏覽器而定，iOS Safari 和 Android Chrome 的實機延遲仍在驗證中。藍牙耳機會明顯增加延遲，建議使用有線耳機或手機喇叭。
+</details>
+
+<details>
+<summary><b>iPhone 的假橫向有哪些限制？</b></summary>
+
+iPhone 假橫向只旋轉網頁舞台，iOS 狀態列、通知與控制中心仍維持直向；Safari 網址列可能出現在舞台右側，加入主畫面可減少網址列遮擋。系統鍵盤仍以直向顯示，網址輸入時暫時轉回直向尚未支援。
 </details>
 
 ---

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useId, useState, type ReactNode } from "react";
 import { ChevronDown, X } from "lucide-react";
+import { toStage } from "../stage/toStage";
 export interface LidTab {
   id: string;
   label: string;
@@ -7,16 +8,28 @@ export interface LidTab {
 }
 export function PianoLid({
   open,
+  rotate = false,
+  player,
   onToggle,
   tabs,
   activeTab,
   onTabChange,
+  hintActive = false,
+  hintPulse = 0,
+  onHintDismiss,
+  onHintOpen,
 }: {
   open: boolean;
+  rotate?: boolean;
+  player?: ReactNode;
   onToggle: () => void;
   tabs: LidTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
+  hintActive?: boolean;
+  hintPulse?: number;
+  onHintDismiss?: () => void;
+  onHintOpen?: () => void;
 }) {
   const shell = useRef<HTMLDivElement>(null),
     inner = useRef<HTMLDivElement>(null),
@@ -25,11 +38,15 @@ export function PianoLid({
     prop = useRef<SVGLineElement>(null),
     inside = useRef<SVGGElement>(null);
   const artId = useId().replace(/:/g, "");
+  const [hintRaised, setHintRaised] = useState(false);
+  const [hintTop, setHintTop] = useState(0);
+  const dragStart = useRef<number | null>(null);
+  const suppressClick = useRef(false);
   const [phoneLayout, setPhoneLayout] = useState(
     () =>
       window.matchMedia(
         "(max-width: 767px), (orientation: landscape) and (max-height: 500px)",
-      ).matches,
+      ).matches || rotate,
   );
   const motion = useRef({
     height: 0,
@@ -37,6 +54,37 @@ export function PianoLid({
     openness: 0,
     openVelocity: 0,
   });
+  useEffect(() => {
+    if (!hintActive || !hintPulse) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    setHintRaised(true);
+    const timer = window.setTimeout(() => setHintRaised(false), 620);
+    return () => window.clearTimeout(timer);
+  }, [hintActive, hintPulse]);
+  useEffect(() => {
+    const lid = cover.current;
+    const stage = lid?.closest<HTMLElement>(".stage");
+    if (!hintActive || !lid || !stage) return;
+
+    const updatePosition = () => {
+      let top = 0;
+      let node: HTMLElement | null = lid;
+      while (node && node !== stage) {
+        top += node.offsetTop;
+        node = node.offsetParent as HTMLElement | null;
+      }
+      if (node === stage) setHintTop(top + lid.offsetHeight + 8);
+    };
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(lid);
+    observer.observe(stage);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [hintActive, rotate]);
   useEffect(() => {
     const area = shell.current!,
       body = inner.current!,
@@ -50,7 +98,7 @@ export function PianoLid({
       area.style.height = Math.max(0, state.height) + "px";
       const p = Math.max(0, Math.min(1, state.openness));
       lid.style.setProperty("--lid-progress", String(p));
-      lid.style.height = 120 + p * 155 + "px";
+      lid.style.height = (open ? 120 + p * 155 : 120) + "px";
       wing.current?.setAttribute("transform", "rotate(" + -14 * p + " 40 245)");
       prop.current?.setAttribute("x2", String(900 - 178 * p));
       prop.current?.setAttribute("y2", String(258 - 182 * p));
@@ -66,7 +114,7 @@ export function PianoLid({
         c = state.velocity + w * error;
       state.height = goal + (error + c * dt) * decay;
       state.velocity = (state.velocity - w * c * dt) * decay;
-      const openGoal = open ? 1 : 0,
+      const openGoal = open || hintRaised ? 1 : 0,
         e = state.openness - openGoal,
         oc = state.openVelocity + w * e;
       state.openness = openGoal + (e + oc * dt) * decay;
@@ -108,29 +156,58 @@ export function PianoLid({
       observer.disconnect();
       reduced.removeEventListener("change", start);
     };
-  }, [open, activeTab]);
+  }, [open, activeTab, hintRaised]);
   useEffect(() => {
     const query = window.matchMedia(
       "(max-width: 767px), (orientation: landscape) and (max-height: 500px)",
     );
-    const update = () => setPhoneLayout(query.matches);
+    const update = () => setPhoneLayout(query.matches || rotate);
     query.addEventListener("change", update);
     update();
     return () => query.removeEventListener("change", update);
-  }, []);
+  }, [rotate]);
   return (
     <section
-      className={"piano-lid grand-piano-lid " + (open ? "is-open" : "")}
+      className={"piano-lid grand-piano-lid " + (open ? "is-open " : "") + (hintActive ? "has-lid-hint " : "") + (hintRaised ? "is-hint-bouncing" : "")}
       aria-label="掀蓋式鋼琴與樂譜架"
     >
       <button
         ref={cover}
         type="button"
-        className="lid-cover"
+        className={"lid-cover" + (phoneLayout ? " lid-handle" : "")}
         aria-expanded={open}
         aria-controls="piano-lid-tray"
         aria-label={open ? "關上琴蓋" : "打開琴蓋"}
-        onClick={onToggle}
+        onPointerDown={(event) => {
+          if (!phoneLayout) return;
+          dragStart.current = toStage(
+            event.clientX,
+            event.clientY,
+            rotate,
+            window.innerWidth,
+          ).y;
+          suppressClick.current = false;
+          try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* pointer capture is optional */ }
+        }}
+        onPointerUp={(event) => {
+          if (!phoneLayout || dragStart.current === null) return;
+          const currentY = toStage(
+            event.clientX,
+            event.clientY,
+            rotate,
+            window.innerWidth,
+          ).y;
+          const delta = currentY - dragStart.current;
+          dragStart.current = null;
+          if (!open && delta > 24) {
+            suppressClick.current = true;
+            onToggle();
+          }
+        }}
+        onClick={() => {
+          if (suppressClick.current) { suppressClick.current = false; return; }
+          onToggle();
+        }}
       >
         <span className="lid-closed-surface" aria-hidden="true" />
         <svg
@@ -251,11 +328,39 @@ export function PianoLid({
           />
         </svg>
         <span className="lid-emblem">VIRTUAL PIANO STUDIO</span>
+        {phoneLayout && <span className="lid-handle-label">︿ 琴蓋</span>}
         <span className="lid-invitation">
           <span>{open ? "放下琴蓋" : "掀開琴蓋 · 放上琴譜與 MIDI"}</span>
           <ChevronDown size={15} />
         </span>
       </button>
+      {hintActive && (
+        <div
+          className="lid-hint"
+          role="status"
+          tabIndex={0}
+          style={{ top: hintTop }}
+          onClick={onHintOpen}
+          onKeyDown={(event) => {
+            if ((event.target as HTMLElement).closest("button")) return;
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onHintOpen?.();
+            }
+          }}
+        >
+          <span>掀開琴蓋，看看裡面有什麼</span>
+          <button
+            type="button"
+            aria-label="關閉琴蓋提示"
+            onClick={(event) => {
+              event.stopPropagation();
+              onHintDismiss?.();
+            }}
+            onKeyDown={(event) => event.stopPropagation()}
+          >×</button>
+        </div>
+      )}
       <div
         className="lid-tray"
         id="piano-lid-tray"
@@ -298,6 +403,7 @@ export function PianoLid({
               </button>
             ))}
           </div>
+          {player && <div className="lid-playback-slot">{player}</div>}
           {tabs.map((tab) => (
             <div
               role="tabpanel"

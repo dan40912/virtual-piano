@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Settings2 } from "lucide-react";
 import { useSettings } from "../store";
+import { StageSegmented } from "./StageControls";
 import {
   aChordMap,
   cChordMap,
   chordCatalog,
+  functionChordMap,
   keyLabel,
   validateChordBinding,
 } from "../music/chords";
@@ -21,6 +24,10 @@ export function ChordPanel({
   resetKey: number;
 }) {
   const s = useSettings();
+  const [buttonsSlot, setButtonsSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setButtonsSlot(document.querySelector<HTMLElement>(".chord-buttons-slot"));
+  }, []);
   const [edit, setEdit] = useState(false),
     [binding, setBinding] = useState<string | null>(null),
     [settingsOpen, setSettingsOpen] = useState(false),
@@ -72,6 +79,7 @@ export function ChordPanel({
         target.matches(
           'input:not([type="checkbox"]):not([type="range"]):not([type="radio"]),textarea,select',
         ) ||
+        target.closest(".stage-slider, .stage-segmented, .stage-stepper") ||
         target.isContentEditable ||
         e.ctrlKey ||
         e.metaKey ||
@@ -137,95 +145,7 @@ export function ChordPanel({
     binding,
     blocked,
   ]);
-  return (
-    <section className="chord-panel" aria-label="一鍵和弦">
-      <div className="chord-heading">
-        <div>
-          <h3>
-            一鍵和弦 <span className="tag">EASY PLAY</span>
-          </h3>
-          <p>點選和弦按鈕演奏；進階選項收在設定中。</p>
-        </div>
-        <label>
-          <input
-            type="checkbox"
-            checked={s.chordEnabled}
-            onChange={(e) => s.set({ chordEnabled: e.target.checked })}
-          />
-          啟用
-        </label>
-        <button
-          type="button"
-          aria-expanded={settingsOpen}
-          aria-controls="chord-settings"
-          onClick={() => setSettingsOpen((open) => !open)}
-        >
-          <Settings2 size={14} />
-          和弦設定
-          <ChevronDown
-            size={14}
-            className={
-              settingsOpen
-                ? "chord-settings-chevron is-open"
-                : "chord-settings-chevron"
-            }
-          />
-        </button>
-      </div>
-      {settingsOpen && (
-        <div className="chord-presets" id="chord-settings">
-          <label>
-            快速配置{" "}
-            <select
-              aria-label="和弦快速配置"
-              value={
-                JSON.stringify(s.chordMapping) === JSON.stringify(aChordMap)
-                  ? "A"
-                  : JSON.stringify(s.chordMapping) === JSON.stringify(cChordMap)
-                    ? "C"
-                    : "custom"
-              }
-              onChange={(e) => {
-                s.set({
-                  chordMapping:
-                    e.target.value === "A"
-                      ? { ...aChordMap }
-                      : { ...cChordMap },
-                });
-                setBinding(null);
-                setMessage(
-                  "已套用常用和弦配置；這是演奏工具，沒有推測歌曲的和弦時間。",
-                );
-              }}
-            >
-              <option value="custom" disabled>
-                自訂配置
-              </option>
-              <option value="A">A 調常用 · A / D / E7 / F♯m</option>
-              <option value="C">C 調入門 · C / Dm / F / G / Am</option>
-            </select>
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={s.chordLatch}
-              onChange={(e) => s.set({ chordLatch: e.target.checked })}
-            />
-            一按保持，換和弦時自動放開
-          </label>
-          <button
-            className={edit ? "enabled" : ""}
-            onClick={() => {
-              setEdit(!edit);
-              setBinding(null);
-              setMessage("選擇和弦後按「改綁按鍵」，再按你習慣的字母或數字。");
-            }}
-          >
-            {edit ? "完成綁定" : "綁定模式"}
-          </button>
-          <button onClick={() => api.current.allOff()}>停止和弦</button>
-        </div>
-      )}
+  const grid = (
       <div className="chord-grid">
         {Object.entries(s.chordMapping).map(([code, chord]) => (
           <div
@@ -235,22 +155,20 @@ export function ChordPanel({
             {edit ? (
               <>
                 <span className="chord-key">{keyLabel(code)}</span>
-                <select
-                  aria-label={`${keyLabel(code)} 和弦`}
+                <StageSegmented
+                  label={`${keyLabel(code)} 和弦`}
+                  className="chord-choice"
                   value={chord}
-                  onChange={(e) =>
+                  options={Object.keys(chordCatalog).map((c) => ({ value: c, label: c }))}
+                  onChange={(next) =>
                     s.set({
                       chordMapping: {
                         ...s.chordMapping,
-                        [code]: e.target.value,
+                        [code]: next,
                       },
                     })
                   }
-                >
-                  {Object.keys(chordCatalog).map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
+                />
                 <button
                   onClick={() => {
                     setBinding(code);
@@ -311,6 +229,99 @@ export function ChordPanel({
           </div>
         ))}
       </div>
+  );
+  return (
+    <section className="chord-panel" aria-label="一鍵和弦">
+      <div className="chord-heading">
+        <div>
+          <h3>
+            一鍵和弦 <span className="tag">EASY PLAY</span>
+          </h3>
+          <p>點選和弦按鈕，或使用 F1–F9 快捷鍵演奏。</p>
+        </div>
+        <label>
+          <input
+            type="checkbox"
+            checked={s.chordEnabled}
+            onChange={(e) => s.set({ chordEnabled: e.target.checked })}
+          />
+          啟用
+        </label>
+        <button
+          type="button"
+          aria-expanded={settingsOpen}
+          aria-controls="chord-settings"
+          onClick={() => setSettingsOpen((open) => !open)}
+        >
+          <Settings2 size={14} />
+          和弦設定
+          <ChevronDown
+            size={14}
+            className={
+              settingsOpen
+                ? "chord-settings-chevron is-open"
+                : "chord-settings-chevron"
+            }
+          />
+        </button>
+      </div>
+      {settingsOpen && (
+        <div className="chord-presets" id="chord-settings">
+          <label>
+            快速配置{" "}
+            <StageSegmented
+              label="和弦快速配置"
+              value={
+                JSON.stringify(s.chordMapping) === JSON.stringify(aChordMap)
+                  ? "A"
+              : JSON.stringify(s.chordMapping) === JSON.stringify(cChordMap)
+                ? "C"
+                : JSON.stringify(s.chordMapping) === JSON.stringify(functionChordMap)
+                  ? "F"
+                  : "custom"
+              }
+              options={[{ value: "A", label: "A 調常用" }, { value: "C", label: "C 調入門" }, { value: "F", label: "F1–F9 快捷鍵" }]}
+              onChange={(next) => {
+                s.set({
+                  chordEnabled: true,
+                  chordMapping:
+                    next === "A"
+                      ? { ...aChordMap }
+                    : next === "C"
+                      ? { ...cChordMap }
+                      : { ...functionChordMap },
+                });
+                setBinding(null);
+                setMessage(
+                  next === "F"
+                    ? "已啟用 F1–F9；直接按功能鍵即可演奏對應和弦。"
+                    : "已套用常用和弦配置；這是演奏工具，沒有推測歌曲的和弦時間。",
+                );
+              }}
+            />
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={s.chordLatch}
+              onChange={(e) => s.set({ chordLatch: e.target.checked })}
+            />
+            一按保持，換和弦時自動放開
+          </label>
+          <button
+            className={edit ? "enabled" : ""}
+            onClick={() => {
+              setEdit(!edit);
+              setBinding(null);
+              setMessage("選擇和弦後按「改綁按鍵」，可使用字母、數字或 F1–F9。");
+            }}
+          >
+            {edit ? "完成綁定" : "綁定模式"}
+          </button>
+          <button onClick={() => api.current.allOff()}>停止和弦</button>
+        </div>
+      )}
+      {buttonsSlot ? createPortal(grid, buttonsSlot) : grid}
       {edit && (
         <button
           onClick={() => {
@@ -320,6 +331,7 @@ export function ChordPanel({
                   .split("")
                   .map((c) => [/\d/.test(c) ? "Digit" + c : "Key" + c, true]),
               ),
+              ...Object.fromEntries(Array.from({ length: 9 }, (_, i) => ["F" + (i + 1), true])),
             }).find((c) => !s.chordMapping[c]);
             if (code)
               s.set({ chordMapping: { ...s.chordMapping, [code]: "C" } });

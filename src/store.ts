@@ -18,7 +18,8 @@ interface Settings {
   theme: string;
   keyCount: number;
   octave: number;
-  mobileLayout: "auto" | "play" | "score";
+  visibleWhiteKeys: number;
+  lidHintSeen: boolean;
   mobileScoreSplit: number;
   set: (s: Partial<Settings>) => void;
 }
@@ -38,31 +39,56 @@ export const useSettings = create<Settings>()(
       theme: "dark",
       keyCount: 61,
       octave: 0,
-      mobileLayout: "auto",
-      mobileScoreSplit: 0.38,
+      visibleWhiteKeys: 18,
+      lidHintSeen: false,
+      mobileScoreSplit: 0.55,
       set: (s) => set(s),
     }),
     {
       name: "piano-studio-settings-v1",
-      version: 3,
+      version: 7,
       migrate: (state) => {
         const old = state as Partial<Settings>;
+        const migrated = { ...old } as Partial<Settings> & {
+          mobileLayout?: unknown;
+        };
+        delete migrated.mobileLayout;
+        const simplifyMapping = (mapping?: Record<string, number>) => {
+          if (!mapping) return defaultMap;
+          // Earlier defaults assigned the full piano with Shift combinations.
+          // Replace that generated layout instead of carrying its scattered keys forward.
+          const keys = Object.keys(mapping);
+          const wasGeneratedDefault =
+            keys.length === 24 && mapping.KeyZ === 48 && mapping.KeyQ === 60 && mapping.KeyU === 71;
+          if (keys.some((key) => key.startsWith("Shift+")) || wasGeneratedDefault)
+            return defaultMap;
+          return completeMapping(mapping);
+        };
         return {
-          ...old,
-          mapping: completeMapping(old.mapping || defaultMap),
+          ...migrated,
+          mapping: simplifyMapping(old.mapping),
+          visibleWhiteKeys:
+            typeof old.visibleWhiteKeys === "number" &&
+            old.visibleWhiteKeys >= 14 &&
+            old.visibleWhiteKeys <= 28
+              ? old.visibleWhiteKeys
+              : 18,
+          profiles: Object.fromEntries(
+            Object.entries(old.profiles || {}).map(([name, mapping]) => [
+              name,
+              simplifyMapping(mapping),
+            ]),
+          ),
           pedal: old.pedal?.startsWith("Shift")
             ? "Space"
             : old.pedal || "Space",
-          mobileLayout:
-            old.mobileLayout === "play" || old.mobileLayout === "score"
-              ? old.mobileLayout
-              : "auto",
+          lidHintSeen: old.lidHintSeen === true,
           mobileScoreSplit:
             typeof old.mobileScoreSplit === "number" &&
             old.mobileScoreSplit >= 0.25 &&
             old.mobileScoreSplit <= 0.65
               ? old.mobileScoreSplit
-              : 0.38,
+              : 0.55,
         } as Settings;
       },
     },

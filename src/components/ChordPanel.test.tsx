@@ -4,7 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ChordPanel } from "./ChordPanel";
 import { useSettings } from "../store";
-import { aChordMap, chordCatalog, validateChordBinding } from "../music/chords";
+import { aChordMap, chordCatalog, functionChordMap, validateChordBinding } from "../music/chords";
 import { defaultMap } from "../music/model";
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: Root, container: HTMLDivElement;
@@ -50,6 +50,14 @@ it("one Z key plays the complete A chord, ignores repeat, and releases every voi
   expect(down).toHaveBeenCalledTimes(4);
   await key("keyup", "KeyZ");
   expect(up).toHaveBeenCalledTimes(4);
+});
+it("plays the mapped chord from F1 and offers the nine-key shortcut preset", async () => {
+  await act(async () => useSettings.getState().set({ chordMapping: { ...functionChordMap } }));
+  await key("keydown", "F1");
+  expect(down.mock.calls.map((c) => c[1])).toEqual(chordCatalog.C);
+  await key("keyup", "F1");
+  expect(up).toHaveBeenCalledTimes(4);
+  expect(Object.keys(functionChordMap)).toEqual(["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"]);
 });
 it("does not play while typing and releases chord on blur", async () => {
   const input = document.createElement("input");
@@ -108,6 +116,8 @@ it("rejects chord conflicts and reserved keys while keeping single-note mappings
   expect(
     validateChordBinding("KeyQ", aChordMap, "KeyZ", "Space", defaultMap),
   ).toBe("");
+  expect(validateChordBinding("F9", aChordMap, "KeyZ", "Space", defaultMap)).toBe("");
+  expect(validateChordBinding("F10", aChordMap, "KeyZ", "Space", defaultMap)).not.toBe("");
 });
 
 it("keeps chord pads visible and tucks advanced chord options behind settings", async () => {

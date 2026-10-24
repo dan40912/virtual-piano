@@ -24,6 +24,12 @@ import { Roll, Sheet } from "./components/Visuals";
 import { engine } from "./audio/PianoEngine";
 import { player } from "./audio/PlaybackScheduler";
 import { useSettings } from "./store";
+import { useStageOrientation } from "./hooks/useStageOrientation";
+import { useLidHint } from "./hooks/useLidHint";
+import { toStage } from "./stage/toStage";
+import { mobileToolHeight } from "./stage/mobileToolHeight";
+import { StageSlider } from "./components/StageSlider";
+import { StageSegmented, StageStepper } from "./components/StageControls";
 import {
   demo,
   defaultMap,
@@ -60,6 +66,7 @@ import {
   SlidersHorizontal,
   Minimize2,
 } from "lucide-react";
+const GITHUB_URL = "https://github.com/dan40912/virtual-piano";
 const clock = (s: number) =>
   `${Math.floor(s / 60)}:${Math.floor(s % 60)
     .toString()
@@ -74,9 +81,21 @@ const LazyRecordingControls = lazy(async () => ({
 function PlaybackProgress({
   duration,
   onSeek,
+  rotate,
+  loop,
+  loopA,
+  loopB,
+  onLoopA,
+  onLoopB,
 }: {
   duration: number;
   onSeek: (position: number) => void;
+  rotate: boolean;
+  loop: boolean;
+  loopA: number;
+  loopB: number;
+  onLoopA: (position: number) => void;
+  onLoopB: (position: number) => void;
 }) {
   const position = useSyncExternalStore(
     player.subscribePosition,
@@ -86,14 +105,18 @@ function PlaybackProgress({
   return (
     <div className="timeline">
       <span>{clock(position)}</span>
-      <input
+      <StageSlider
         aria-label="播放進度"
-        type="range"
-        min="0"
+        min={0}
         max={duration || 1}
-        step=".01"
+        step={0.01}
         value={position}
-        onChange={(event) => onSeek(+event.target.value)}
+        onChange={onSeek}
+        rotate={rotate}
+        markers={loop ? [
+          { id: "A", label: "循環起點 A", value: loopA, onChange: onLoopA },
+          { id: "B", label: "循環終點 B", value: loopB, onChange: onLoopB },
+        ] : []}
       />
       <span>{clock(duration)}</span>
     </div>
@@ -102,16 +125,29 @@ function PlaybackProgress({
 
 export default function App() {
   const settings = useSettings();
+  const lidHint = useLidHint();
+  const appRef = useRef<HTMLDivElement>(null);
+  const urlInputRef = useRef<HTMLInputElement>(null);
   const isIOS =
     /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const [lidOpen, setLidOpen] = useState(false);
-  const [lidTab, setLidTab] = useState("import");
+  const [stage, setStage] = useState<"poster" | "playing">("poster");
+  const [urlInputActive, setUrlInputActive] = useState(false);
+  const { rotate, fullscreen, requestLandscape, releaseOrientationLock } =
+    useStageOrientation(stage, urlInputActive);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const stageHeight = rotate ? window.innerWidth : window.innerHeight;
+  const rotateHintSeen = useRef(false);
+  const [rotateHintVisible, setRotateHintVisible] = useState(false);
+  const [lidTab, setLidTab] = useState("stand");
   const [moreControlsOpen, setMoreControlsOpen] = useState(false);
+  const [modeNotice, setModeNotice] = useState("");
   const [immersive, setImmersive] = useState(false);
   const [scorePaperRequested, setScorePaperRequested] = useState(false);
   const [recordingRequested, setRecordingRequested] = useState(false);
   const [splitRatio, setSplitRatio] = useState(settings.mobileScoreSplit);
+  const splitRatioRef = useRef(settings.mobileScoreSplit);
   const splitDrag = useRef<{
     pointerId: number;
     startY: number;
@@ -120,6 +156,24 @@ export default function App() {
   useEffect(() => {
     useSettings.getState().set({ theme: "dark" });
   }, []);
+  useEffect(() => {
+    document.documentElement.dataset.rotate = rotate ? "true" : "false";
+    return () => {
+      delete document.documentElement.dataset.rotate;
+    };
+  }, [rotate]);
+  useEffect(() => {
+    if (!rotate || rotateHintSeen.current) return;
+    rotateHintSeen.current = true;
+    setRotateHintVisible(true);
+    const timer = window.setTimeout(() => setRotateHintVisible(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [rotate]);
+  useEffect(() => {
+    if (!modeNotice) return;
+    const timer = window.setTimeout(() => setModeNotice(""), 4000);
+    return () => window.clearTimeout(timer);
+  }, [modeNotice]);
   const [song, setSong] = useState<Song | null>(defaultSong);
   const position = player.position;
   const [playing, setPlaying] = useState(false);
@@ -187,6 +241,7 @@ export default function App() {
     [song, muted, transpose],
   );
   useEffect(() => {
+    splitRatioRef.current = settings.mobileScoreSplit;
     setSplitRatio(settings.mobileScoreSplit);
   }, [settings.mobileScoreSplit]);
   const expected =
@@ -247,7 +302,7 @@ export default function App() {
     waitHeld.current.clear();
     setScore({ correct: 0, wrong: 0, offset: 0 });
   };
-  const load = (s: Song) => {
+  const load = (s: Song, targetMode: "auto" | "practice" = "practice") => {
     stop();
     setSong(s);
     setMuted([]);
@@ -260,10 +315,27 @@ export default function App() {
     setLoopB(s.duration);
     setView("roll");
     setRollExpanded(true);
-    setMode("practice");
-    setPracticeType("rhythm");
+    setMode(targetMode);
+    if (targetMode === "practice") setPracticeType("rhythm");
     resetPractice();
     setStatus(`${s.title} · ${s.notes.length} 個音符，解析成功`);
+  };
+  const playRecording = async (recording: Song) => {
+    load(recording, "auto");
+    const token = playToken.current;
+    try {
+      await engine.ready();
+      if (token !== playToken.current) return;
+      engine.settings(settings.volume, settings.reverb, settings.pianoStyle);
+      player.silent = false;
+      player.muted = [];
+      player.noteFilter = null;
+      player.start(recording);
+      setPlaying(true);
+      setStatus(`正在播放錄音 · ${recording.notes.length} 個音符`);
+    } catch (e) {
+      setStatus((e as Error).message);
+    }
   };
   const down = (id: string, base: number) => {
     const inputStarted = performance.now();
@@ -273,7 +345,9 @@ export default function App() {
       setStatus("此音符超出 A0–C8 音域");
       return;
     }
+    if (stage === "poster" && !id.startsWith("preview:")) startStage();
     pressed.current.set(id, n);
+    if (!lidOpen && !id.startsWith("preview:")) lidHint.noteAttacked();
     if (!id.startsWith("preview:")) recorder.attack(id, n, settings.velocity);
     waitHeld.current.add(n);
     refresh();
@@ -358,6 +432,30 @@ export default function App() {
         setStatus(e.message);
       });
   }, []);
+  const startStage = () => {
+    if (stage !== "poster") return;
+    // Call ready before any await so the first touch unlocks audio on mobile.
+    primeAudio();
+    setStage("playing");
+    if (stageRef.current) void requestLandscape(stageRef.current);
+  };
+  const openLid = () => {
+    lidHint.dismiss();
+    setLidOpen(true);
+  };
+  const leaveStage = async () => {
+    await releaseOrientationLock();
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        // Stage exit still proceeds if the browser already left fullscreen.
+      }
+    }
+    setImmersive(false);
+    setLidOpen(false);
+    setStage("poster");
+  };
   const noteIsAuto = useCallback(
     (note: Note) => {
       if (mode !== "accompaniment") return true;
@@ -425,6 +523,7 @@ export default function App() {
         target.matches(
           'input:not([type="checkbox"]):not([type="range"]):not([type="radio"]),textarea,select',
         ) ||
+        target.closest(".stage-slider, .stage-segmented, .stage-stepper") ||
         target.isContentEditable
       )
         return;
@@ -433,7 +532,7 @@ export default function App() {
         if (["Escape", "Tab"].includes(e.code)) return;
         const map = { ...settings.mapping };
         if (!validShortcut(code)) {
-          setWarning("請使用字母、數字或符號鍵，可搭配 Shift");
+          setWarning("請使用不需 Shift 的字母、數字或符號鍵");
           return;
         }
         const previous = map[code];
@@ -531,10 +630,10 @@ export default function App() {
       player.stop();
     };
   }, []);
-  const play = async () => {
+  const play = async (requestedMode = mode) => {
     if (!song) return;
     const token = ++playToken.current;
-    if (mode === "practice" && practiceType === "wait") {
+    if (requestedMode === "practice" && practiceType === "wait") {
       setStatus("等待模式已就緒：同時按住亮起的琴鍵即可前進");
       return;
     }
@@ -546,7 +645,7 @@ export default function App() {
         player.setPosition(0);
         resetPractice();
       }
-      player.silent = mode === "practice";
+      player.silent = requestedMode === "practice";
       player.start(song);
       setPlaying(true);
     } catch (e) {
@@ -682,10 +781,154 @@ export default function App() {
         .reverse()
         .find((t) => t.time <= position)?.bpm || song.tempo
     : 100;
+  const hasMiniPlayback = Boolean(song && (playing || position > 0));
+  const setLoopAFromPosition = (next: number) =>
+    setLoopA(Math.max(0, Math.min(loopB - 0.1, next)));
+  const setLoopBFromPosition = (next: number) =>
+    setLoopB(Math.max(loopA + 0.1, Math.min(song?.duration || 1, next)));
+  const playbackBar = (
+          <div
+            className={`player ${moreControlsOpen ? "more-controls-open" : ""} ${!lidOpen && hasMiniPlayback ? "player-mini" : ""}`}
+            data-visible={song && (lidOpen || (stage === "playing" && hasMiniPlayback)) ? "true" : "false"}
+          >
+            <div className="playback-heading">
+              <strong>{song?.title || "自由演奏"}</strong>
+              <button
+                type="button"
+                className="player-more-toggle"
+                aria-expanded={moreControlsOpen}
+                onClick={() => setMoreControlsOpen((open) => !open)}
+              >
+                <Settings2 size={15} /> {moreControlsOpen ? "收起更多" : "更多"}
+              </button>
+            </div>
+            <PlaybackProgress
+              duration={song?.duration || 0}
+              onSeek={seek}
+              rotate={rotate}
+              loop={loop}
+              loopA={loopA}
+              loopB={loopB}
+              onLoopA={setLoopAFromPosition}
+              onLoopB={setLoopBFromPosition}
+            />
+            <div className="transport-row">
+              <div className="transport">
+                <button
+                  title="重播"
+                  aria-label="重播"
+                  onClick={() => {
+                    stop();
+                    void play();
+                  }}
+                >
+                  <RotateCcw size={18} />
+                </button>
+                <button
+                  className="play"
+                  aria-label={playing ? "暫停" : "播放"}
+                  disabled={!song}
+                  onClick={() => {
+                    if (playing) {
+                      player.stop(false);
+                      setPlaying(false);
+                      setActive(new Set());
+                    } else if (mode === "free") {
+                      setMode("auto");
+                      setModeNotice("已切換到自動模式");
+                      setStatus("已切換到自動模式");
+                      void play("auto");
+                    } else void play();
+                  }}
+                >
+                  {playing ? (
+                    <Pause size={22} fill="currentColor" />
+                  ) : (
+                    <Play size={22} fill="currentColor" />
+                  )}
+                </button>
+                <button title="停止" aria-label="停止" onClick={stop}>
+                  <Square size={17} />
+                </button>
+                <span className="separator" />
+                <button
+                  className={loop ? "enabled" : ""}
+                  title="循環"
+                  aria-label="循環"
+                  aria-pressed={loop}
+                  onClick={() => setLoop(!loop)}
+                >
+                  <Repeat2 size={18} />
+                </button>
+              </div>
+              <div className="playback-settings">
+                <label>
+                  速度{" "}
+                  <StageStepper label="速度倍率" value={speed} min={0.25} max={2} step={0.25} onChange={setSpeed} format={(n) => `${n.toFixed(2)}×`} />
+                </label>
+                <label>
+                  轉調{" "}
+                  <StageStepper label="轉調" value={transpose} min={-12} max={12} step={1} onChange={setTranspose} format={(n) => `${n > 0 ? "+" : ""}${n} 半音`} />
+                </label>
+                <span className="separator" />
+                <Volume2 size={16} />
+                <StageSlider className="playback-volume" aria-label="音量" min={0} max={1} step={0.01} value={settings.volume} onChange={(volume) => settings.set({ volume })} rotate={rotate} />
+                <span>{Math.round(settings.volume * 100)}%</span>
+              </div>
+              <div className="toggles">
+                <button
+                  className={metro ? "enabled" : ""}
+                  aria-label="節拍器"
+                  aria-pressed={metro}
+                  onClick={() => setMetro(!metro)}
+                >
+                  ♩ <span>節拍器</span>
+                </button>
+                <button
+                  className={pedalVisible ? "enabled" : ""}
+                  aria-label="延音"
+                  aria-pressed={pedalVisible}
+                  onClick={() => {
+                    engine.sustain(!pedal);
+                    recorder.pedal(!pedal);
+                    setPedal(!pedal);
+                  }}
+                >
+                  ⌁ <span>延音</span>
+                  <span className="toggle">
+                    <i />
+                  </span>
+                </button>
+              </div>
+            </div>
+            {loop && (
+              <div className="loop-fields">
+                <button type="button" onClick={() => setLoopAFromPosition(player.position)}>設為 A · {clock(loopA)}</button>
+                <button type="button" onClick={() => setLoopBFromPosition(player.position)}>設為 B · {clock(loopB)}</button>
+                <span>拖曳進度條上的 A／B 標記可微調循環範圍</span>
+              </div>
+            )}
+          </div>
+  );
+
   return (
     <div
+      ref={appRef}
       className={`app ${immersive ? "immersive-mode" : ""}`}
-      onPointerDownCapture={primeAudio}
+      data-stage={stage}
+      data-lid={lidOpen ? "open" : "closed"}
+      data-rotate={rotate ? "true" : "false"}
+      data-lid-tab={lidTab}
+      data-chord-enabled={settings.chordEnabled ? "true" : "false"}
+      data-url-input={urlInputActive ? "true" : "false"}
+      onPointerDownCapture={(event) => {
+        if (
+          stage === "poster" &&
+          event.target instanceof Element &&
+          Boolean(event.target.closest("[data-stage-start]"))
+        ) startStage();
+        primeAudio();
+      }}
       onKeyDownCapture={primeAudio}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
@@ -693,51 +936,22 @@ export default function App() {
         if (e.dataTransfer.files[0]) void importFile(e.dataTransfer.files[0]);
       }}
     >
+      <div
+        className="stage"
+        ref={stageRef}
+        style={{
+          "--stage-height": `${stageHeight}px`,
+          "--stage-width": `${rotate ? window.innerHeight : window.innerWidth}px`,
+        } as CSSProperties}
+      >
       <header>
-        <a className="brand" href="#">
-          <span className="brand-icon">
-            <PianoIcon size={22} />
-          </span>
-          <span>
-            Virtual Piano <b>Studio</b>
-            <small>YOUR PERSONAL MUSIC SPACE</small>
-          </span>
-        </a>
+        <div className="header-status" role="status" aria-label={modeNotice || `音源狀態：${audio}`}>
+          <span className={`audio-status-dot ${audio.includes("已就緒") ? "ready" : ""}`} />
+          <span>{modeNotice || (audio.includes("已就緒") ? "音源就緒" : audio.includes("載入") ? "載入中" : audio)}</span>
+        </div>
         <nav>
-          <button onClick={() => setPanel("keyboard")} title="鍵盤設定">
-            <Settings2 size={16} />
-            <span>鍵盤設定</span>
-          </button>
-          <button onClick={() => setPanel("audio")} title="音訊設定">
-            <Volume2 size={17} />
-            <span>音訊設定</span>
-          </button>
-          <i />
           <button
-            className="desktop-lid-button"
-            aria-label="打開琴蓋功能選單"
-            onClick={() => {
-              setLidTab("menu");
-              setLidOpen(true);
-            }}
-          >
-            <ChevronDown size={17} />
-            <span>琴蓋選單</span>
-          </button>
-          <button
-            className="mobile-track-button"
-            aria-label={lidOpen ? "關閉曲目與工具" : "打開曲目與工具"}
-            aria-expanded={lidOpen}
-            onClick={() => {
-              setLidTab("import");
-              setLidOpen((open) => !open);
-            }}
-          >
-            <Music2 size={16} />
-            <span>曲目與工具</span>
-          </button>
-          <button
-            aria-label="全螢幕"
+            aria-label={immersive || fullscreen ? "離開全螢幕" : "全螢幕"}
             onClick={() => {
               if (immersive) {
                 setImmersive(false);
@@ -759,7 +973,7 @@ export default function App() {
                 .catch(() => setImmersive(true));
             }}
           >
-            <Maximize2 size={17} />
+            {immersive || fullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
           </button>
         </nav>
       </header>
@@ -771,48 +985,52 @@ export default function App() {
       >
         返回工作室
       </button>
+      {(rotate || fullscreen || immersive) && stage === "playing" && (
+        <button
+          type="button"
+          className="stage-leave"
+          aria-label="離開演奏"
+          onClick={() => void leaveStage()}
+        >
+          <X size={15} /> <span>離開</span>
+        </button>
+      )}
+      {rotateHintVisible && (
+        <div className="stage-rotate-hint" role="status" aria-live="polite">
+          <RotateCcw size={15} /> <span>逆時針轉動手機</span>
+        </div>
+      )}
       <main>
         <section
           className="studio"
-          data-mobile-layout={settings.mobileLayout}
           style={
             {
-              "--mobile-score-height": `${splitRatio * 100}dvh`,
-              "--mobile-piano-height": `${(1 - splitRatio) * 100}dvh`,
+              "--mobile-score-height": `${splitRatio * stageHeight}px`,
+              "--mobile-piano-height": `${(1 - splitRatio) * stageHeight}px`,
+              // Reserve 44px for the handle, 24px for the splitter, 44px for playback,
+              // and 110px for the minimum keyboard deck. Chords reserve 38px above it.
+              "--mobile-tool-height": `${mobileToolHeight(stageHeight, splitRatio, settings.chordEnabled && lidTab === "chord" ? 38 : 0)}px`,
             } as CSSProperties
           }
         >
-          <div
-            className="mobile-layout-switch"
-            role="group"
-            aria-label="手機版面"
-          >
-            <span>版面</span>
-            <button
-              type="button"
-              data-layout="play"
-              className={settings.mobileLayout === "play" ? "selected" : ""}
-              aria-pressed={settings.mobileLayout === "play"}
-              onClick={() => settings.set({ mobileLayout: "play" })}
-            >
-              演奏版面
-            </button>
-            <button
-              type="button"
-              data-layout="score"
-              className={settings.mobileLayout === "score" ? "selected" : ""}
-              aria-pressed={settings.mobileLayout === "score"}
-              onClick={() => settings.set({ mobileLayout: "score" })}
-            >
-              看譜版面
-            </button>
-            <small>
-              {settings.mobileLayout === "auto" ? "依螢幕方向" : "已記住選擇"}
-            </small>
+          <div className="stage-prompt" data-stage-start>
+            <button type="button" onClick={startStage}>開始彈奏</button>
+            <span>進入演奏視角</span>
           </div>
           <PianoLid
             open={lidOpen}
-            onToggle={() => setLidOpen((v) => !v)}
+            rotate={rotate}
+            onToggle={() => {
+              if (lidOpen) setLidOpen(false);
+              else openLid();
+            }}
+            hintActive={lidHint.active && !lidOpen}
+            hintPulse={lidHint.pulse}
+            onHintDismiss={lidHint.dismiss}
+            onHintOpen={() => {
+              openLid();
+            }}
+            player={playbackBar}
             activeTab={lidTab}
             onTabChange={(id) => {
               if (id === "record") setRecordingRequested(true);
@@ -820,12 +1038,28 @@ export default function App() {
             }}
             tabs={[
               {
-                id: "import",
-                label: "琴譜與 MIDI",
+                id: "stand",
+                label: "譜架",
                 content: (
                   <div
                     className={`grand-workbench ${rollExpanded ? "roll-expanded" : ""}`}
                   >
+                    <div className="stand-mode-controls" aria-label="演奏模式">
+                      {([["auto", "自動"], ["accompaniment", "伴奏"], ["free", "自由"], ["practice", "練習"]] as const).map(([id, label]) => (
+                        <button key={id} className={mode === id ? "selected" : ""} aria-pressed={mode === id} onClick={() => {
+                          if (mode === id) return;
+                          stop();
+                          resetPractice();
+                          setMode(id);
+                          setModeNotice("");
+                        }}>{label}</button>
+                      ))}
+                      {mode === "practice" && <>
+                        <StageSegmented label="練習方式" value={practiceType} options={[{ value: "wait", label: "等待正確音符" }, { value: "rhythm", label: "節奏練習" }]} onChange={(next) => { stop(); resetPractice(); setPracticeType(next); }} />
+                        {practiceType === "rhythm" && <StageSegmented label="節奏容許誤差" value={tolerance} options={[{ value: 0.1, label: "±100ms" }, { value: 0.2, label: "±200ms" }, { value: 0.3, label: "±300ms" }]} onChange={setTolerance} />}
+                      </>}
+                      <button onClick={() => setPanel("tracks")}>音軌管理</button>
+                    </div>
                     <section className="music-desk" aria-label="樂譜架">
                       <div className="desk-crest">
                         <span /> MUSIC DESK <span />
@@ -856,29 +1090,10 @@ export default function App() {
                             </p>
                           </div>
                         </div>
-                        <div className="segmented">
-                          <button
-                            className={view === "score" ? "selected" : ""}
-                            onClick={() => {
-                              setScorePaperRequested(true);
-                              setView("score");
-                            }}
-                          >
-                            琴譜
-                          </button>
-                          <button
-                            className={view === "roll" ? "selected" : ""}
-                            onClick={() => setView("roll")}
-                          >
-                            Piano Roll
-                          </button>
-                          <button
-                            className={view === "sheet" ? "selected" : ""}
-                            onClick={() => setView("sheet")}
-                          >
-                            五線譜
-                          </button>
-                        </div>
+                        <label className="view-select-label">
+                          顯示
+                          <StageSegmented label="譜架內容" value={view} options={[{ value: "score", label: "琴譜" }, { value: "roll", label: "Piano Roll" }, { value: "sheet", label: "五線譜" }]} onChange={(next) => { if (next === "score") setScorePaperRequested(true); setView(next); }} />
+                        </label>
                       </div>
                       <div className="visual-area">
                         <div
@@ -905,9 +1120,11 @@ export default function App() {
                             <div className="roll-label">
                               <span>
                                 <i />
-                                {manualFollow
-                                  ? "手動跟彈 · 音符由上往下落"
-                                  : "音符由上往下 · 跟隨 MIDI"}
+                                {manualFollow && modeNotice === "已切換到練習模式 · 手動跟彈"
+                                  ? modeNotice
+                                  : manualFollow
+                                    ? "手動跟彈 · 音符由上往下落"
+                                    : "音符由上往下 · 跟隨 MIDI"}
                               </span>
                               <div className="roll-tools">
                                 <button
@@ -918,6 +1135,8 @@ export default function App() {
                                     if (manualFollow) return;
                                     stop();
                                     setMode("practice");
+                                    setModeNotice("已切換到練習模式 · 手動跟彈");
+                                    setStatus("已切換到練習模式 · 手動跟彈");
                                     setPracticeType("rhythm");
                                     resetPractice();
                                     setView("roll");
@@ -927,13 +1146,14 @@ export default function App() {
                                 </button>
                                 <label>
                                   下落速度
-                                  <input
+                                    <StageSlider
                                     aria-label="Piano Roll 下落速度"
-                                    type="range"
-                                    min="30"
-                                    max="130"
+                                      min={30}
+                                      max={130}
+                                      step={1}
                                     value={zoom}
-                                    onChange={(e) => setZoom(+e.target.value)}
+                                      onChange={setZoom}
+                                      rotate={rotate}
                                   />
                                 </label>
                                 <button
@@ -984,14 +1204,23 @@ export default function App() {
                           <div className="notation-empty">
                             <Music2 size={30} />
                             <p>
-                              {transpose
-                                ? "轉調後請使用同步 Piano Roll"
-                                : "MIDI 不含完整記譜，使用 Piano Roll 保留準確音符。"}
+                              {song && !song.xml
+                                ? "MIDI 沒有五線譜。匯入 MusicXML 可顯示樂譜，或改用 Piano Roll。"
+                                : transpose
+                                  ? "轉調後請使用同步 Piano Roll"
+                                  : "目前曲目沒有可顯示的五線譜。"}
                             </p>
-                            <span>匯入未壓縮 MusicXML 可預覽原始五線譜。</span>
-                            <button onClick={() => setView("roll")}>
-                              顯示 Piano Roll →
-                            </button>
+                            {song && !song.xml ? (
+                              <div className="notation-actions">
+                                <button onClick={() => {
+                                  file.current!.accept = ".xml,.musicxml";
+                                  file.current!.click();
+                                }}>匯入 MusicXML</button>
+                                <button onClick={() => setView("roll")}>改用 Piano Roll</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setView("roll")}>顯示 Piano Roll →</button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1000,6 +1229,7 @@ export default function App() {
                     <section className="midi-desk" aria-label="MIDI 放置區">
                       <span className="eyebrow">MIDI PLAYER</span>
                       <h3>把演奏檔放在這裡</h3>
+                      <p className="mobile-current-song">目前曲目：{song?.title || "自由演奏"}</p>
                       <button
                         className="midi-drop-slot"
                         onClick={() => {
@@ -1014,24 +1244,41 @@ export default function App() {
                           {song ? "目前：" + song.title : "尚未放入 MIDI"}
                         </small>
                       </button>{" "}
-                      <section className="import-box">
-                        <div className="url-row">
+                      <section className="import-box" onBlurCapture={(event) => {
+                        if (urlInputActive && !event.currentTarget.contains(event.relatedTarget as Node | null)) setUrlInputActive(false);
+                      }}>
+                        <div className="url-row" onClickCapture={() => {
+                          if (rotate && !urlInputActive) setUrlInputActive(true);
+                        }}>
                           <Link2 size={18} />
                           <input
                             aria-label="詩歌網址"
+                            ref={urlInputRef}
                             value={url}
+                            onFocus={() => { if (rotate) setUrlInputActive(true); }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                setUrlInputActive(false);
+                                void fetchSong();
+                              }
+                              if (event.key === "Escape") setUrlInputActive(false);
+                            }}
                             onChange={(e) => setUrl(e.target.value)}
                             placeholder="貼上 hymnal.net 詩歌網址"
                           />
                           <button
                             className="primary"
                             disabled={loading}
-                            onClick={() => void fetchSong()}
+                            onClick={() => { if (rotate && !urlInputActive) { setUrlInputActive(true); requestAnimationFrame(() => urlInputRef.current?.focus()); return; } setUrlInputActive(false); void fetchSong(); }}
                           >
                             {loading ? "載入中…" : "載入樂譜"}
                             <span>↗</span>
                           </button>
                         </div>
+                        {urlInputActive && <div className="portrait-input-notice" role="status">
+                          已暫時轉回直向
+                          <button type="button" onClick={() => setUrlInputActive(false)}>取消</button>
+                        </div>}
                         <div className="import-bottom">
                           <div className="import-actions">
                             <button
@@ -1088,88 +1335,55 @@ export default function App() {
                 ),
               },
               {
-                id: "voice",
-                label: "聲音與演奏",
+                id: "sound",
+                label: "聲音",
                 content: (
-                  <InstrumentControls onPreview={() => void audition()} />
+                  <div className="sound-tab-content">
+                    <InstrumentControls onPreview={() => void audition()} />
+                    <div className="sound-tab-settings">
+                      <label>琴鍵數
+                        <StageSegmented label="琴鍵數" value={settings.keyCount} options={[{ value: 61, label: "61 鍵" }, { value: 88, label: "88 鍵" }]} onChange={(keyCount) => settings.set({ keyCount })} />
+                      </label>
+                      <label className="sound-volume-control">
+                        音量
+                        <StageSlider aria-label="音量" min={0} max={1} step={0.01} value={settings.volume} onChange={(volume) => settings.set({ volume })} rotate={rotate} />
+                        <span>{Math.round(settings.volume * 100)}%</span>
+                      </label>
+                      <button className="key-binding" onClick={() => setPanel("keyboard")}>鍵盤設定</button>
+                      <button onClick={() => setPanel("audio")}>音訊設定</button>
+                      <button onClick={() => setPanel("tracks")}>音軌管理</button>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: "chord",
+                label: "和弦",
+                content: (
+                  <ChordPanel
+                    onDown={(id, n) => void downRef.current(id, n)}
+                    onUp={release}
+                    blocked={panel !== ""}
+                    resetKey={playToken.current}
+                  />
                 ),
               },
               {
                 id: "record",
-                label: "我的錄製",
+                label: "錄音",
                 content: recordingRequested ? (
                   <Suspense
                     fallback={
                       <p className="score-loading">正在載入錄製工具…</p>
                     }
                   >
-                    <LazyRecordingControls onLoad={load} />
+                    <LazyRecordingControls onPlay={(recording) => void playRecording(recording)} />
                   </Suspense>
                 ) : null,
               },
-              {
-                id: "menu",
-                label: "功能選單",
-                content: (
-                  <div className="lid-function-menu">
-                    <div>
-                      <span className="eyebrow">YOUR PIANO, YOUR WAY</span>
-                      <h3>把工具收進琴蓋，讓音樂留在眼前。</h3>
-                      <p>
-                        選擇功能後可關上琴蓋繼續演奏；琴蓋開合不會停止歌曲或清除錄製。
-                      </p>
-                    </div>
-                    <div className="lid-menu-grid">
-                      <button onClick={() => setPanel("keyboard")}>
-                        <Settings2 size={19} />
-                        <strong>琴鍵與綁定</strong>
-                        <span>88 鍵快捷鍵、自訂按法</span>
-                      </button>
-                      <button onClick={() => setPanel("audio")}>
-                        <Volume2 size={19} />
-                        <strong>音訊設定</strong>
-                        <span>音量、殘響與演奏力度</span>
-                      </button>
-                      <button onClick={() => setPanel("tracks")}>
-                        <SlidersHorizontal size={19} />
-                        <strong>音軌管理</strong>
-                        <span>旋律、伴奏與個別靜音</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          load(defaultSong);
-                        }}
-                      >
-                        <Music2 size={19} />
-                        <strong>載入預設曲</strong>
-                        <span>e0637_i · 110 BPM · 3/4</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          stop();
-                          setMode("free");
-                          setLidOpen(false);
-                        }}
-                      >
-                        <PianoIcon size={19} />
-                        <strong>自由演奏</strong>
-                        <span>關上琴蓋，直接開始彈</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setLidTab("voice");
-                        }}
-                      >
-                        <Headphones size={19} />
-                        <strong>更換聲音風格</strong>
-                        <span>柔和、剛強、輕快</span>
-                      </button>
-                    </div>
-                  </div>
-                ),
-              },
             ]}
           />
+          <div className="closed-playback-slot">{playbackBar}</div>
           <div className="piano-housing">
             <div className="fallboard">
               <span className="instrument-name">
@@ -1181,6 +1395,7 @@ export default function App() {
               </span>
             </div>
             <div className="felt" />
+            <div className="chord-buttons-slot" />
             <Piano
               count={settings.keyCount}
               mapping={shownMap}
@@ -1194,15 +1409,28 @@ export default function App() {
               onScroll={setScroll}
               scrollPosition={scroll}
               onBounds={setScrollMax}
+              rotate={rotate}
+              visibleWhiteKeys={settings.visibleWhiteKeys}
             />
+            <div className="keyboard-zoom-control" aria-label="手機橫向鍵盤縮放">
+              <span>{settings.visibleWhiteKeys} 個白鍵</span>
+              <StageSlider
+                aria-label="調整手機橫向顯示白鍵數"
+                min={14}
+                max={28}
+                step={1}
+                value={settings.visibleWhiteKeys}
+                onChange={(visibleWhiteKeys) => settings.set({ visibleWhiteKeys })}
+                rotate={rotate}
+              />
+            </div>
+            <div className="octave-side-controls" aria-label="八度控制">
+              <button aria-label="降低八度" onClick={() => settings.set({ octave: Math.max(-2, settings.octave - 1) })}>−</button>
+              <span>八度 {settings.octave > 0 ? "+" : ""}{settings.octave}</span>
+              <button aria-label="提高八度" onClick={() => settings.set({ octave: Math.min(2, settings.octave + 1) })}>＋</button>
+            </div>
             <div className="piano-lip" />
           </div>
-          <ChordPanel
-            onDown={(id, n) => void downRef.current(id, n)}
-            onUp={release}
-            blocked={panel !== ""}
-            resetKey={playToken.current}
-          />
           <div className="keyboard-tools">
             <div>
               <span className="tiny-dot" />{" "}
@@ -1210,216 +1438,20 @@ export default function App() {
                 ? Array.from(allActive).map(noteName).join(" · ")
                 : "準備好，開始演奏"}
               <span className="key-hint">
-                A – L 演奏　 /　
+                A–J 主音／W E T Y U 黑鍵　 /　
                 {settings.pedal === "Space" ? "空白鍵" : settings.pedal} 延音
               </span>
             </div>
             <div>
               <label>
                 音域{" "}
-                <select
-                  aria-label="琴鍵數量"
-                  value={settings.keyCount}
-                  onChange={(e) => settings.set({ keyCount: +e.target.value })}
-                >
-                  <option value={61}>61 鍵</option>
-                  <option value={88}>88 鍵</option>
-                </select>
+                <StageSegmented label="琴鍵數量" value={settings.keyCount} options={[{ value: 61, label: "61 鍵" }, { value: 88, label: "88 鍵" }]} onChange={(keyCount) => settings.set({ keyCount })} />
               </label>
-              <input
-                className="range-scroll"
-                aria-label="鍵盤水平位置"
-                type="range"
-                min="0"
-                max={scrollMax}
-                value={scroll}
-                onChange={(e) => setScroll(+e.target.value)}
-              />
+              <StageSlider className="range-scroll" aria-label="鍵盤水平位置" min={0} max={scrollMax} step={1} value={scroll} onChange={setScroll} rotate={rotate} />
               <span className="separator" />
-              <button
-                aria-label="降低八度"
-                onClick={() =>
-                  settings.set({ octave: Math.max(-2, settings.octave - 1) })
-                }
-              >
-                −
-              </button>
-              <span>
-                八度 {settings.octave > 0 ? "+" : ""}
-                {settings.octave}
-              </span>
-              <button
-                aria-label="提高八度"
-                onClick={() =>
-                  settings.set({ octave: Math.min(2, settings.octave + 1) })
-                }
-              >
-                ＋
-              </button>
             </div>
           </div>
-          <div
-            className={`player ${moreControlsOpen ? "more-controls-open" : ""}`}
-          >
-            <div className="playback-heading">
-              <strong>{song?.title || "自由演奏"}</strong>
-              <button
-                type="button"
-                className="player-more-toggle"
-                aria-expanded={moreControlsOpen}
-                onClick={() => setMoreControlsOpen((open) => !open)}
-              >
-                <Settings2 size={15} /> {moreControlsOpen ? "收起更多" : "更多"}
-              </button>
-            </div>
-            <PlaybackProgress duration={song?.duration || 0} onSeek={seek} />
-            <div className="transport-row">
-              <div className="transport">
-                <button
-                  title="重播"
-                  onClick={() => {
-                    stop();
-                    void play();
-                  }}
-                >
-                  <RotateCcw size={18} />
-                </button>
-                <button
-                  className="play"
-                  aria-label={playing ? "暫停" : "播放"}
-                  disabled={!song || mode === "free"}
-                  onClick={() => {
-                    if (playing) {
-                      player.stop(false);
-                      setPlaying(false);
-                      setActive(new Set());
-                    } else void play();
-                  }}
-                >
-                  {playing ? (
-                    <Pause size={22} fill="currentColor" />
-                  ) : (
-                    <Play size={22} fill="currentColor" />
-                  )}
-                </button>
-                <button title="停止" onClick={stop}>
-                  <Square size={17} />
-                </button>
-                <span className="separator" />
-                <button
-                  className={loop ? "enabled" : ""}
-                  title="循環"
-                  onClick={() => setLoop(!loop)}
-                >
-                  <Repeat2 size={18} />
-                </button>
-              </div>
-              <div className="playback-settings">
-                <label>
-                  速度{" "}
-                  <select
-                    aria-label="速度倍率"
-                    value={speed}
-                    onChange={(e) => setSpeed(+e.target.value)}
-                  >
-                    {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((x) => (
-                      <option key={x} value={x}>
-                        {x.toFixed(2)}×
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  轉調{" "}
-                  <select
-                    aria-label="轉調"
-                    value={transpose}
-                    onChange={(e) => setTranspose(+e.target.value)}
-                  >
-                    {Array.from({ length: 25 }, (_, i) => i - 12).map((n) => (
-                      <option key={n} value={n}>
-                        {n > 0 ? "+" : ""}
-                        {n} 半音
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <span className="separator" />
-                <Volume2 size={16} />
-                <input
-                  aria-label="音量"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step=".01"
-                  value={settings.volume}
-                  onChange={(e) => settings.set({ volume: +e.target.value })}
-                />
-                <span>{Math.round(settings.volume * 100)}%</span>
-              </div>
-              <div className="toggles">
-                <button
-                  className={metro ? "enabled" : ""}
-                  onClick={() => setMetro(!metro)}
-                >
-                  ♩ <span>節拍器</span>
-                </button>
-                <button
-                  className={pedalVisible ? "enabled" : ""}
-                  onClick={() => {
-                    engine.sustain(!pedal);
-                    recorder.pedal(!pedal);
-                    setPedal(!pedal);
-                  }}
-                >
-                  ⌁ <span>延音</span>
-                  <span className="toggle">
-                    <i />
-                  </span>
-                </button>
-              </div>
-            </div>
-            {loop && (
-              <div className="loop-fields">
-                <label>
-                  A{" "}
-                  <input
-                    aria-label="循環起點"
-                    type="number"
-                    min="0"
-                    max={loopB}
-                    step=".1"
-                    value={loopA}
-                    onChange={(e) =>
-                      setLoopA(
-                        Math.max(0, Math.min(loopB - 0.1, +e.target.value)),
-                      )
-                    }
-                  />
-                </label>
-                <label>
-                  B{" "}
-                  <input
-                    aria-label="循環終點"
-                    type="number"
-                    min={loopA}
-                    max={song?.duration}
-                    step=".1"
-                    value={loopB}
-                    onChange={(e) =>
-                      setLoopB(
-                        Math.max(
-                          loopA + 0.1,
-                          Math.min(song?.duration || 1, +e.target.value),
-                        ),
-                      )
-                    }
-                  />
-                </label>
-                <span>以秒設定循環區間</span>
-              </div>
-            )}
-          </div>
+
           <div className="mode-row">
             <div className="mode-switch">
               {[
@@ -1431,6 +1463,7 @@ export default function App() {
                 <button
                   key={id}
                   className={mode === id ? "selected" : ""}
+                  aria-pressed={mode === id}
                   onClick={() => {
                     stop();
                     resetPractice();
@@ -1448,14 +1481,14 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <span>
-              {mode === "auto"
+            <span className={modeNotice ? "mode-notice" : ""} role="status" aria-live="polite">
+              {modeNotice || (mode === "auto"
                 ? "跟隨每一個音符，感受音樂的呼吸。"
                 : mode === "accompaniment"
                   ? "選擇自動播放的部分；其餘音符由你親自彈奏。"
                   : mode === "free"
                     ? "使用電腦鍵盤、滑鼠或觸控，盡情彈奏。"
-                    : "跟隨提示練習，讓每次演奏都更進一步。"}
+                    : "跟隨提示練習，讓每次演奏都更進一步。")}
             </span>
             <button onClick={() => setPanel("tracks")}>
               <SlidersHorizontal size={15} /> 音軌
@@ -1472,10 +1505,16 @@ export default function App() {
             tabIndex={0}
             onPointerDown={(event) => {
               event.preventDefault();
+              const point = toStage(
+                event.clientX,
+                event.clientY,
+                rotate,
+                window.innerWidth,
+              );
               splitDrag.current = {
                 pointerId: event.pointerId,
-                startY: event.clientY,
-                startRatio: splitRatio,
+                startY: point.y,
+                startRatio: splitRatioRef.current,
               };
               try {
                 event.currentTarget.setPointerCapture(event.pointerId);
@@ -1486,30 +1525,33 @@ export default function App() {
             onPointerMove={(event) => {
               const drag = splitDrag.current;
               if (!drag || drag.pointerId !== event.pointerId) return;
+              const point = toStage(
+                event.clientX,
+                event.clientY,
+                rotate,
+                window.innerWidth,
+              );
               const next = Math.max(
                 0.25,
-                Math.min(
-                  0.65,
-                  drag.startRatio +
-                    (event.clientY - drag.startY) / Math.max(320, innerHeight),
-                ),
+                Math.min(0.65, drag.startRatio + (point.y - drag.startY) / Math.max(320, stageHeight)),
               );
+              splitRatioRef.current = next;
               setSplitRatio(next);
             }}
             onPointerUp={(event) => {
               if (splitDrag.current?.pointerId !== event.pointerId) return;
               splitDrag.current = null;
-              useSettings.getState().set({ mobileScoreSplit: splitRatio });
+              useSettings.getState().set({ mobileScoreSplit: splitRatioRef.current });
             }}
             onPointerCancel={(event) => {
               if (splitDrag.current?.pointerId !== event.pointerId) return;
               splitDrag.current = null;
-              useSettings.getState().set({ mobileScoreSplit: splitRatio });
+              useSettings.getState().set({ mobileScoreSplit: splitRatioRef.current });
             }}
             onLostPointerCapture={(event) => {
               if (splitDrag.current?.pointerId !== event.pointerId) return;
               splitDrag.current = null;
-              useSettings.getState().set({ mobileScoreSplit: splitRatio });
+              useSettings.getState().set({ mobileScoreSplit: splitRatioRef.current });
             }}
             onKeyDown={(event) => {
               if (event.key === "ArrowUp" || event.key === "ArrowDown") {
@@ -1521,6 +1563,7 @@ export default function App() {
                     splitRatio + (event.key === "ArrowDown" ? 0.03 : -0.03),
                   ),
                 );
+                splitRatioRef.current = next;
                 setSplitRatio(next);
                 settings.set({ mobileScoreSplit: next });
               }
@@ -1623,28 +1666,18 @@ export default function App() {
           )}
           {mode === "practice" && (
             <div className="practice">
-              <select
+              <StageSegmented
+                label="練習方式"
                 value={practiceType}
-                onChange={(e) => {
+                options={[{ value: "wait", label: "等待正確音符" }, { value: "rhythm", label: "節奏練習" }]}
+                onChange={(next) => {
                   stop();
                   resetPractice();
-                  setPracticeType(e.target.value);
+                  setPracticeType(next);
                 }}
-              >
-                <option value="wait">等待正確音符</option>
-                <option value="rhythm">節奏練習</option>
-              </select>
+              />
               {practiceType === "rhythm" && (
-                <select
-                  value={tolerance}
-                  onChange={(e) => setTolerance(+e.target.value)}
-                >
-                  {[0.1, 0.2, 0.3].map((t) => (
-                    <option key={t} value={t}>
-                      ±{t * 1000}ms
-                    </option>
-                  ))}
-                </select>
+                <StageSegmented label="節奏容許誤差" value={tolerance} options={[0.1, 0.2, 0.3].map((t) => ({ value: t, label: `±${t * 1000}ms` }))} onChange={setTolerance} />
               )}
               <span>
                 {practiceType === "wait"
@@ -1653,19 +1686,15 @@ export default function App() {
                     : `下一組：${expected.map(noteName).join(" + ")}`
                   : "按播放開始，依 Piano Roll 提示演奏"}
               </span>
-              <span>
-                正確 {score.correct} · 錯誤 {score.wrong} · 遺漏 {missed}
-              </span>
-              <span>
-                完成{" "}
-                {Math.round(
-                  (score.correct / Math.max(1, considered.length)) * 100,
-                )}
-                %
-                {practiceType === "rhythm" && score.correct
-                  ? ` · 平均誤差 ${Math.round((score.offset / score.correct) * 1000)}ms`
-                  : ""}
-              </span>
+              {playing && <>
+                <span>正確 {score.correct} · 錯誤 {score.wrong} · 遺漏 {missed}</span>
+                <span>
+                  完成 {Math.round((score.correct / Math.max(1, considered.length)) * 100)}%
+                  {practiceType === "rhythm" && score.correct
+                    ? ` · 平均誤差 ${Math.round((score.offset / score.correct) * 1000)}ms`
+                    : ""}
+                </span>
+              </>}
               <button
                 onClick={() => {
                   stop();
@@ -1696,20 +1725,38 @@ export default function App() {
             無需登入・音樂留在你的裝置
           </span>
           <span className="shortcut">
-            小提示：Page Up / Down 切換八度　 ·　⇧ = Shift
+            小提示：A–J 演奏，Page Up / Down 切換八度
           </span>
         </div>
       </main>
       <footer>
         <span>VIRTUAL PIANO STUDIO</span>
         <span>為每一位熱愛音樂的人而作。</span>
-        <a
-          href="https://github.com/sfzinstruments/SalamanderGrandPiano"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Piano samples: Alexander Holm · CC BY 3.0 ↗
-        </a>
+        <div className="footer-links">
+          <a
+            href="https://github.com/sfzinstruments/SalamanderGrandPiano"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Piano samples: Alexander Holm · CC BY 3.0 ↗
+          </a>
+          <a
+            className="footer-github"
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="在 GitHub 查看原始碼"
+            title="在 GitHub 查看原始碼"
+          >
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"
+              />
+            </svg>
+            <span>GitHub</span>
+          </a>
+        </div>
       </footer>
       <input
         ref={file}
@@ -1792,8 +1839,8 @@ export default function App() {
             {panel === "keyboard" ? (
               <>
                 <p>
-                  88 鍵皆有預設快捷鍵。⇧ 表示按住 Shift；點音符可重新綁定。Page
-                  Up / Down 切換八度，八度 0 為原始音域。
+                  下排 Z S X D C V G B H N J M、上排 Q 2 W 3 E R 5 T 6 Y 7 U，
+                  A W S E D F T G Y H U J 對應 C4–B4，不需要 Shift。用 Page Up / Down 或琴鍵旁的八度按鈕移到其他音域；點音符可重新綁定。
                 </p>
                 <div className="mapping-grid">
                   {Array.from({ length: 88 }, (_, i) => i + 21).map((n) => (
@@ -1852,14 +1899,7 @@ export default function App() {
                 </div>
                 <label>
                   踏板按鍵{" "}
-                  <select
-                    value={settings.pedal}
-                    onChange={(e) => settings.set({ pedal: e.target.value })}
-                  >
-                    {["Space", "ControlRight"].map((k) => (
-                      <option key={k}>{k}</option>
-                    ))}
-                  </select>
+                  <StageSegmented label="踏板按鍵" value={settings.pedal} options={[{ value: "Space", label: "Space" }, { value: "ControlRight", label: "Control" }]} onChange={(pedal) => settings.set({ pedal })} />
                 </label>
                 <div className="profile">
                   <input
@@ -1880,23 +1920,17 @@ export default function App() {
                   >
                     儲存配置
                   </button>
-                  <select
-                    aria-label="載入配置"
+                  <StageSegmented
+                    label="載入配置"
                     value=""
-                    onChange={(e) => {
+                    options={Object.keys(settings.profiles).map((key) => ({ value: key, label: key }))}
+                    onChange={(key) => {
                       settings.set({
-                        mapping: settings.profiles[e.target.value],
+                        mapping: settings.profiles[key],
                       });
-                      setProfile(e.target.value);
+                      setProfile(key);
                     }}
-                  >
-                    <option value="" disabled>
-                      載入配置
-                    </option>
-                    {Object.keys(settings.profiles).map((k) => (
-                      <option key={k}>{k}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </>
             ) : panel === "audio" ? (
@@ -1904,38 +1938,15 @@ export default function App() {
                 <p>Grand Piano · Salamander 真實鋼琴取樣</p>
                 <label className="setting-line">
                   音量
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step=".01"
-                    value={settings.volume}
-                    onChange={(e) => settings.set({ volume: +e.target.value })}
-                  />
+                  <StageSlider aria-label="音量" min={0} max={1} step={0.01} value={settings.volume} onChange={(volume) => settings.set({ volume })} rotate={rotate} />
                 </label>
                 <label className="setting-line">
                   殘響
-                  <input
-                    type="range"
-                    min="0"
-                    max=".8"
-                    step=".01"
-                    value={settings.reverb}
-                    onChange={(e) => settings.set({ reverb: +e.target.value })}
-                  />
+                  <StageSlider aria-label="殘響" min={0} max={0.8} step={0.01} value={settings.reverb} onChange={(reverb) => settings.set({ reverb })} rotate={rotate} />
                 </label>
                 <label className="setting-line">
                   演奏力度
-                  <input
-                    type="range"
-                    min=".1"
-                    max="1"
-                    step=".01"
-                    value={settings.velocity}
-                    onChange={(e) =>
-                      settings.set({ velocity: +e.target.value })
-                    }
-                  />
+                  <StageSlider aria-label="演奏力度" min={0.1} max={1} step={0.01} value={settings.velocity} onChange={(velocity) => settings.set({ velocity })} rotate={rotate} />
                 </label>
                 <label>
                   <input
@@ -1990,6 +2001,7 @@ export default function App() {
           </section>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -32,6 +32,17 @@ export const cChordMap: Record<string, string> = {
   KeyN: "Am",
   KeyM: "G7",
 };
+export const functionChordMap: Record<string, string> = {
+  F1: "C",
+  F2: "Dm",
+  F3: "Em",
+  F4: "F",
+  F5: "G",
+  F6: "Am",
+  F7: "G7",
+  F8: "E7",
+  F9: "A",
+};
 export const keyLabel = (code: string) =>
   code.replace("Key", "").replace("Digit", "");
 export function validateChordBinding(
@@ -41,7 +52,7 @@ export function validateChordBinding(
   pedal: string,
   single: Record<string, number>,
 ) {
-  if (!/^(Key[A-Z]|Digit[0-9])$/.test(code)) return "請選英文字母或數字鍵。";
+  if (!/^(Key[A-Z]|Digit[0-9]|F[1-9])$/.test(code)) return "請選英文字母、數字或 F1–F9。";
   if (code === pedal) return "此鍵已綁定延音踏板。";
   // Chord and single-note shortcuts are separate modes; sharing is intentional.
   if (current[code] && code !== target)

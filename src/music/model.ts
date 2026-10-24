@@ -1,4 +1,3 @@
-import { completeMapping } from "./keyboard";
 export interface Note {
   id: string;
   midi: number;
@@ -24,29 +23,12 @@ export const isBlack = (n: number) => [1, 3, 6, 8, 10].includes(n % 12);
 export const noteName = (n: number) =>
   ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"][n % 12] +
   (Math.floor(n / 12) - 1);
+// One familiar chromatic octave; Page Up/Down moves it through the piano.
 export const legacyMap: Record<string, number> = Object.fromEntries(
-  [
-    "KeyA",
-    "KeyW",
-    "KeyS",
-    "KeyE",
-    "KeyD",
-    "KeyF",
-    "KeyT",
-    "KeyG",
-    "KeyY",
-    "KeyH",
-    "KeyU",
-    "KeyJ",
-    "KeyK",
-    "KeyO",
-    "KeyL",
-    "KeyP",
-    "Semicolon",
-  ].map((k, i) => [k, 60 + i]),
+  ["KeyA", "KeyW", "KeyS", "KeyE", "KeyD", "KeyF", "KeyT", "KeyG", "KeyY", "KeyH", "KeyU", "KeyJ"]
+    .map((code, index) => [code, 60 + index]),
 );
-// Preserve the familiar middle octave, then give every other piano note a shortcut.
-export const defaultMap = completeMapping(legacyMap);
+export const defaultMap = legacyMap;
 export const demo: Song = {
   title: "小星星 · Twinkle, Twinkle",
   source: "內建示範 · 公版旋律 / 本專案編曲",

@@ -12,6 +12,72 @@
   --gold: #c9b788;
   --text: #e7e8e2;
   --bg: #141615;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* Stage controls use logical stage coordinates and keep a thumb-sized touch target. */
+.stage-slider {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 90px;
+  min-width: 48px;
+  min-height: 44px;
+  align-items: center;
+  touch-action: none;
+  cursor: pointer;
+  outline-offset: 2px;
+}
+.stage-slider-track { display: block; width: 100%; height: 5px; overflow: hidden; border-radius: 999px; background: #45463d; }
+.stage-slider-track > span { display: block; height: 100%; border-radius: inherit; background: #c9b788; }
+.stage-slider-thumb {
+  position: absolute; top: 50%; width: 16px; height: 16px; border: 2px solid #f2e5c0;
+  border-radius: 50%; background: #b89b60; transform: translate(-50%, -50%); box-shadow: 0 1px 5px #0008;
+}
+.stage-segmented { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.stage-segmented button { min-height: 40px; padding: 6px 10px; border: 1px solid #48483e; border-radius: 8px; color: #d8d1bd; background: #20221e; }
+.stage-segmented button[aria-pressed="true"] { border-color: #c9b788; color: #f4e5bb; background: #c9b78822; }
+.stage-stepper { display: inline-flex; align-items: center; gap: 5px; }
+.stage-stepper button { width: 36px; height: 36px; min-width: 36px; padding: 0; border: 1px solid #48483e; border-radius: 8px; color: #eadbb3; background: #20221e; font-size: 18px; }
+.stage-stepper output { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+.chord-choice { max-width: 230px; }
+.chord-choice button { min-height: 32px; padding: 3px 7px; }
+.portrait-input-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; padding: 10px 12px; border: 1px solid #c9b78866; border-radius: 10px; color: #f0dfb0; background: #171811; }
+.portrait-input-notice button { min-height: 40px; }
+.app[data-url-input="true"] .import-box {
+  position: fixed !important; z-index: 1000;
+  inset: max(16px, var(--safe-top)) max(16px, var(--safe-right)) auto max(16px, var(--safe-left));
+  width: auto; max-height: calc(100dvh - 32px); overflow: auto; padding: 16px;
+  border: 1px solid #c9b78888; border-radius: 16px; background: #171a16; box-shadow: 0 18px 50px #000b;
+}
+.app[data-url-input="true"] .url-row { flex-wrap: wrap; }
+.app[data-url-input="true"] .url-row input { min-width: 100%; min-height: 48px; }
+.app[data-url-input="true"] .portrait-input-notice { position: sticky; top: 0; z-index: 2; }
+
+@media (orientation: landscape) and (max-height: 500px), (max-height: 500px) {
+  .app[data-lid="open"] .piano-housing,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing {
+    display: flex; flex-direction: column; min-height: 110px;
+  }
+  .app[data-lid="open"] .piano-housing > .fallboard,
+  .app[data-lid="open"] .piano-housing > .felt,
+  .app[data-lid="open"] .piano-housing > .piano-lip,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .fallboard,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .felt,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .piano-lip { display: none !important; }
+  .app[data-lid="open"] .piano-housing > .keyboard-scroll,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .keyboard-scroll {
+    flex: 1 1 auto; width: calc(100% - 112px) !important; height: 100% !important;
+    min-height: 110px; margin-inline: 56px !important;
+  }
+  .app[data-lid="open"] .piano-housing .keys,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing .keys {
+    height: 100% !important; min-height: 110px !important; max-height: none;
+  }
+  .app[data-lid="open"] .octave-side-controls,
+  .app[data-rotate="true"][data-lid="open"] .octave-side-controls { inset: 0 !important; }
 }
 * {
   box-sizing: border-box;
@@ -19,6 +85,7 @@
 body {
   margin: 0;
 }
+.stage { position: relative; }
 button,
 input,
 select {
@@ -238,7 +305,6 @@ main {
   overflow: visible;
 }
 .mobile-track-button,
-.mobile-layout-switch,
 .mobile-track-sheet-heading,
 .mobile-score-splitter,
 .immersive-exit {
@@ -597,10 +663,10 @@ h2 {
   position: fixed;
   z-index: 900;
   left: 50%;
-  bottom: max(8px, env(safe-area-inset-bottom));
+  bottom: max(8px, var(--safe-bottom));
   width: min(calc(100vw - 24px), 1292px);
   max-height: calc(
-    100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    100dvh - 16px - var(--safe-top) - var(--safe-bottom)
   );
   overflow-y: auto;
   transform: translateX(-50%);
@@ -612,7 +678,7 @@ h2 {
   backdrop-filter: blur(18px);
 }
 .app {
-  padding-bottom: calc(190px + env(safe-area-inset-bottom));
+  padding-bottom: calc(190px + var(--safe-bottom));
 }
 .playback-heading {
   display: flex;
@@ -822,6 +888,34 @@ footer {
 footer > span:first-child {
   letter-spacing: 2px;
   font-size: 8px;
+}
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.footer-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #ffffff14;
+  border-radius: 999px;
+  color: #a49a7c;
+  font-size: 11px;
+  text-decoration: none;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.footer-github:hover {
+  color: #e1c98a;
+  border-color: #c9b27a66;
+}
+.footer-github:focus-visible {
+  outline: 2px solid #e1c98a;
+  outline-offset: 2px;
 }
 .modal-backdrop {
   position: fixed;
@@ -2445,26 +2539,25 @@ footer > span:first-child {
     min-height: 100dvh;
   }
   header {
-    padding-top: env(safe-area-inset-top);
-    padding-left: max(8px, env(safe-area-inset-left));
-    padding-right: max(8px, env(safe-area-inset-right));
+    padding-top: var(--safe-top);
+    padding-left: max(8px, var(--safe-left));
+    padding-right: max(8px, var(--safe-right));
   }
   main {
-    padding-left: max(12px, env(safe-area-inset-left));
-    padding-right: max(12px, env(safe-area-inset-right));
+    padding-left: max(12px, var(--safe-left));
+    padding-right: max(12px, var(--safe-right));
   }
   .player {
     padding-bottom: 10px;
   }
   .piano-housing {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--safe-bottom);
   }
 
   .studio {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "layout"
       "score"
       "player"
       "modes"
@@ -2479,41 +2572,6 @@ footer > span:first-child {
     background: transparent;
     box-shadow: none;
     gap: 8px;
-  }
-  .mobile-layout-switch {
-    grid-area: layout;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    min-height: 42px;
-    padding: 4px;
-    border: 1px solid #343831;
-    border-radius: 7px;
-    background: #171a17;
-    color: #9ba391;
-  }
-  .mobile-layout-switch > span {
-    padding: 0 7px;
-    font-size: 10px;
-  }
-  .mobile-layout-switch button {
-    min-height: 36px;
-    padding: 6px 10px;
-    border: 1px solid transparent;
-    font-size: 10px;
-    white-space: nowrap;
-  }
-  .mobile-layout-switch button.selected {
-    border-color: #827249;
-    background: #c9b78818;
-    color: #e0cb95;
-  }
-  .mobile-layout-switch small {
-    margin-left: auto;
-    padding: 0 8px;
-    color: #777f71;
-    font-size: 9px;
-    white-space: nowrap;
   }
   nav .desktop-lid-button {
     display: none;
@@ -2650,8 +2708,8 @@ footer > span:first-child {
   }
   .player {
     grid-area: player;
-    right: max(8px, env(safe-area-inset-right));
-    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, var(--safe-right));
+    left: max(8px, var(--safe-left));
     width: auto;
     transform: none;
     padding: 9px 10px 12px;
@@ -2775,33 +2833,6 @@ footer > span:first-child {
   .accompaniment-panel {
     grid-area: accompaniment;
   }
-  .studio[data-mobile-layout="play"] {
-    grid-template-areas:
-      "layout"
-      "piano"
-      "tools"
-      "player"
-      "modes"
-      "splitter"
-      "chords"
-      "accompaniment"
-      "score";
-  }
-  .studio[data-mobile-layout="play"] .music-desk {
-    display: none;
-  }
-  .studio[data-mobile-layout="play"] .mobile-score-splitter {
-    display: none;
-  }
-  .studio[data-mobile-layout="play"] .piano-housing {
-    min-height: min(58dvh, 520px);
-  }
-  .studio[data-mobile-layout="play"] .keys {
-    height: clamp(220px, 52dvh, 410px);
-  }
-  .studio[data-mobile-layout="play"] .piano-key.black {
-    height: 62%;
-  }
   .piano-lid.is-open .lid-tray {
     position: fixed;
     inset: auto 0 0;
@@ -2809,7 +2840,7 @@ footer > span:first-child {
     display: block !important;
     width: 100%;
     height: min(82dvh, 740px) !important;
-    max-height: calc(100dvh - env(safe-area-inset-top));
+    max-height: calc(100dvh - var(--safe-top));
     padding: 0;
     overflow-x: hidden;
     overflow-y: auto;
@@ -2821,7 +2852,7 @@ footer > span:first-child {
   .piano-lid.is-open .lid-tray-inner {
     display: block;
     min-height: 100%;
-    padding: 13px 12px calc(15px + env(safe-area-inset-bottom));
+    padding: 13px 12px calc(15px + var(--safe-bottom));
   }
   .piano-lid.is-open .mobile-track-sheet-heading {
     display: flex;
@@ -2875,8 +2906,8 @@ footer > span:first-child {
 @media (orientation: landscape) and (max-height: 500px) {
   header {
     height: 48px;
-    padding-left: max(10px, env(safe-area-inset-left));
-    padding-right: max(10px, env(safe-area-inset-right));
+    padding-left: max(10px, var(--safe-left));
+    padding-right: max(10px, var(--safe-right));
   }
   .brand-icon,
   .brand small {
@@ -2893,59 +2924,31 @@ footer > span:first-child {
     padding: 5px 8px;
   }
   main {
-    padding: 4px max(10px, env(safe-area-inset-left)) 0;
+    padding: 4px max(10px, var(--safe-left)) 0;
   }
   .studio {
     gap: 4px;
   }
-  .studio[data-mobile-layout="auto"] {
-    grid-template-areas:
-      "layout"
-      "piano"
-      "tools"
-      "player"
-      "modes"
-      "splitter"
-      "chords"
-      "accompaniment"
-      "score";
-  }
-  .studio[data-mobile-layout="auto"] .music-desk {
-    display: none;
-  }
-  .studio[data-mobile-layout="auto"] .mobile-score-splitter {
-    display: none;
-  }
-  .studio[data-mobile-layout="auto"] .keys,
-  .studio[data-mobile-layout="play"] .keys {
-    height: clamp(190px, 54dvh, 285px);
-  }
-  .studio[data-mobile-layout="auto"] .piano-housing,
-  .studio[data-mobile-layout="play"] .piano-housing {
-    min-height: min(66dvh, 360px);
-  }
-  .studio[data-mobile-layout="score"] .music-desk .visual-area {
-    height: clamp(120px, var(--mobile-score-height, 36dvh), 48dvh);
-  }
   .player {
     padding-top: 5px;
-    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    padding-bottom: calc(6px + var(--safe-bottom));
   }
 }
+
 
 .immersive-mode header {
   display: none;
 }
 .immersive-mode main {
-  padding-top: max(6px, env(safe-area-inset-top));
+  padding-top: max(6px, var(--safe-top));
 }
 .immersive-exit {
   display: none;
 }
 .immersive-mode .immersive-exit {
   position: fixed;
-  right: max(12px, env(safe-area-inset-right));
-  bottom: calc(10px + env(safe-area-inset-bottom));
+  right: max(12px, var(--safe-right));
+  bottom: calc(10px + var(--safe-bottom));
   z-index: 1200;
   display: inline-flex;
   min-height: 44px;
@@ -2957,8 +2960,1958 @@ footer > span:first-child {
   box-shadow: 0 4px 18px #0008;
 }
 
+/* The first visit is deliberately a quiet piano surface. */
+.header-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #a8afa4;
+  font-size: 11px;
+}
+.audio-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b79b61;
+  box-shadow: 0 0 9px #b79b6155;
+}
+.audio-status-dot.ready {
+  background: #aebc96;
+  box-shadow: 0 0 9px #aebc9655;
+}
+.app > .stage > header {
+  height: 50px;
+  padding: 0 24px;
+  border: 0;
+}
+.app > .stage > header nav button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.app > .stage > main {
+  padding-top: 0;
+}
+.studio > .stage-prompt {
+  display: none;
+}
+.app[data-lid="closed"] .studio > :not(.piano-lid):not(.piano-housing):not(.stage-prompt):not(.keyboard-tools):not(.closed-playback-slot) {
+  display: none !important;
+}
+.app[data-lid="closed"] .studio > .keyboard-tools,
+.app[data-lid="closed"] .below { display: none !important; }
+.app[data-lid="closed"] .studio > .piano-lid .lid-tray {
+  display: none !important;
+}
+.app[data-lid="closed"] > .stage > footer { display: none; }
+@media (max-width: 767px) {
+  .app > .stage > footer { display: none; }
+}
+.app[data-lid="closed"] .studio > .piano-housing::after {
+  content: "按任意琴鍵開始彈奏";
+  display: block;
+  padding: 8px;
+  color: #a49a7c;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+.app[data-stage="poster"] {
+  min-height: 100dvh;
+  overflow: hidden;
+}
+.app[data-stage="poster"] > .stage > header,
+.app[data-stage="poster"] > .stage > .immersive-exit {
+  display: none;
+}
+.app[data-stage="poster"] > .stage > main {
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  padding: max(8px, var(--safe-top)) max(8px, var(--safe-right)) max(8px, var(--safe-bottom)) max(8px, var(--safe-left));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.app[data-stage="poster"] .studio {
+  position: relative;
+  display: block;
+  width: 100%;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.app[data-stage="poster"] .studio > :not(.piano-lid):not(.piano-housing):not(.stage-prompt) {
+  display: none !important;
+}
+.app[data-stage="poster"] .piano-lid {
+  display: block !important;
+  width: 100%;
+}
+.app[data-stage="poster"] .piano-lid .lid-cover {
+  display: flex !important;
+  width: 100%;
+  height: 68px !important;
+  min-height: 68px;
+  pointer-events: none;
+}
+.app[data-stage="poster"] .piano-lid .grand-lid-art { display: block !important; }
+.app[data-stage="poster"] .piano-lid .lid-invitation {
+  display: none !important;
+}
+.app[data-stage="poster"] .piano-housing {
+  width: 100%;
+  min-height: 0;
+  padding: 8px 4px 4px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #323630, #191c19 34%, #101210);
+}
+.app[data-stage="poster"] .keys {
+  height: clamp(190px, 37dvh, 310px);
+}
+.app[data-stage="poster"] .piano-housing::after {
+  display: none;
+}
+.app[data-stage="poster"] .stage-prompt {
+  position: absolute;
+  z-index: 5;
+  inset: 50% 12px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.app[data-stage="poster"] .stage-prompt button {
+  min-height: 58px;
+  padding: 14px 24px;
+  border: 1px solid #d5c18b;
+  border-radius: 32px;
+  background: #171914ee;
+  color: #f0dda9;
+  box-shadow: 0 7px 28px #0009;
+  font-size: 17px;
+  font-weight: 700;
+  pointer-events: auto;
+}
+.app[data-stage="poster"] .stage-prompt span {
+  color: #e0d5b4;
+  text-shadow: 0 2px 8px #000;
+  font-size: 12px;
+}
+.app[data-stage="poster"] .octave-side-controls { display: none !important; }
+.app[data-stage="poster"] .below { display: none !important; }
+
+@media (max-width: 767px) {
+  .app > .stage > header { display: none; }
+  .app > .stage > main { max-width: none; padding-top: 0; }
+  .studio { grid-template-areas: "layout" "score" "piano" "tools" "player" "modes" "splitter" "chords" "accompaniment"; }
+  .app > .stage > header { display: flex; height: 46px; padding: 0 12px; }
+  .studio > .stage-prompt { display: none; }
+  .piano-lid {
+    display: block !important;
+    grid-area: layout;
+    position: relative;
+    z-index: 4;
+  }
+  .piano-lid > .lid-cover {
+    display: flex !important;
+    position: relative;
+    width: 100%;
+    height: 42px !important;
+    min-height: 42px;
+    overflow: hidden;
+    border: 1px solid #68583b;
+    border-radius: 9px;
+    background: linear-gradient(#292d28, #111411);
+  }
+  .piano-lid > .lid-cover .grand-lid-art,
+  .piano-lid > .lid-cover .lid-closed-surface { display: none; }
+  .piano-lid > .lid-cover .lid-emblem { display: none; }
+  .piano-lid > .lid-cover .lid-invitation { display: flex; }
+  .piano-lid > .lid-gold-rim { display: none !important; }
+  .piano-lid .lid-tray {
+    display: none !important;
+    height: 0 !important;
+  }
+  .piano-lid.is-open .lid-tray {
+    display: block !important;
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 1000;
+    width: 100%;
+    height: min(82dvh, 740px) !important;
+    max-height: calc(100dvh - var(--safe-top));
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border: 1px solid #726340;
+    border-radius: 17px 17px 0 0;
+    background: #141814;
+    box-shadow: 0 -18px 55px #000c;
+  }
+  .piano-lid .lid-tray-inner { display: block !important; padding: 13px 12px calc(15px + var(--safe-bottom)); }
+  .piano-lid .lid-tabs { display: flex !important; }
+  .piano-lid .lid-tray [role="tabpanel"] { display: block; }
+  .piano-lid .lid-tray [role="tabpanel"][hidden] { display: none !important; }
+  .piano-lid.is-open .mobile-track-sheet-heading { display: flex; }
+  .app[data-lid="closed"] .studio > .piano-lid { display: block !important; }
+  .app[data-lid="closed"] .studio > .piano-housing::after { display: none; }
+  .app[data-lid="closed"] .studio > .piano-housing { margin-top: 8px; }
+  .app[data-stage="poster"] > .stage > main { padding: 10px 8px; }
+  .app[data-stage="poster"] .studio { margin: auto 0; width: 100%; }
+  .app[data-stage="poster"] .piano-housing { margin: 0; }
+  .app[data-stage="poster"] .stage-prompt { inset: 50% 12px auto; }
+  .app[data-stage="poster"] .piano-lid .lid-cover { height: 64px !important; min-height: 64px; }
+  .app[data-stage="poster"] .keys { height: clamp(190px, 34dvh, 290px); }
+  .app .below { display: none !important; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .studio { position: relative; }
+  .piano-lid { grid-area: layout; }
+  .piano-lid > .lid-cover { height: 32px !important; min-height: 32px; }
+  .studio .keys { height: clamp(150px, 52dvh, 280px); }
+  .app[data-lid="closed"] .studio > .piano-housing::after { display: none; }
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools {
+    display: contents !important;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools > div:first-child,
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools label,
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools input,
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools .separator,
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools > div:last-child > span {
+    display: none !important;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools > div:last-child {
+    display: contents;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools button[aria-label="降低八度"],
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools button[aria-label="提高八度"] {
+    position: absolute;
+    z-index: 15;
+    top: calc(42px + 38px + 24dvh);
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0;
+    border: 1px solid #8b774b;
+    border-radius: 10px;
+    background: #171a17ed;
+    color: #e4d19e;
+    font-size: 23px;
+    box-shadow: 0 3px 12px #0009;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools button[aria-label="降低八度"] {
+    left: 0;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools button[aria-label="提高八度"] {
+    right: 0;
+  }
+}
+
+/* Keep the desktop instrument, tool surface, player and keys in one viewport. */
+@media (min-width: 1024px) {
+  .app[data-lid="open"] .studio {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 50px);
+    overflow: visible;
+  }
+  .app[data-lid="open"] .piano-lid { order: 1; flex: 0 0 auto; }
+  .app[data-lid="open"] .grand-piano-lid > .lid-cover {
+    height: 120px !important;
+    min-height: 120px;
+  }
+  .app[data-lid="open"] .grand-piano-lid .lid-tray {
+    height: auto !important;
+    max-height: min(210px, calc(100dvh - 580px));
+    min-height: 110px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .app[data-lid="open"] .grand-piano-lid .lid-tray-inner { padding: 4px 20px 8px; }
+  .app[data-lid="open"] .grand-piano-lid .lid-tabs { margin-bottom: 6px; padding-bottom: 5px; }
+  .app[data-lid="open"] .grand-piano-lid .lid-tabs button { min-height: 36px; padding: 5px 12px; }
+  .app[data-lid="open"] .grand-workbench { gap: 12px; padding: 4px 0; }
+  .app[data-lid="open"] .visual-area { height: 156px; }
+  .app[data-lid="open"] .piano-housing { order: 4; flex: 0 0 auto; }
+  .app[data-lid="open"] .piano-housing .keys { height: clamp(132px, 19vh, 176px); }
+  .app[data-lid="open"] .octave-side-controls { min-height: 42px; }
+  .app[data-lid="open"] .keyboard-tools { order: 5; max-height: 52px; overflow: auto; flex: 0 0 auto; }
+  .app[data-lid="open"] .accompaniment-panel,
+  .app[data-lid="open"] .practice,
+  .app[data-lid="open"] .warning { order: 6; }
+  .app[data-lid="open"] .mode-row { order: 2; flex: 0 0 auto; min-height: 42px; }
+  .app[data-lid="open"] .player {
+    order: 3;
+    position: relative;
+    inset: auto;
+    z-index: 2;
+    width: auto;
+    max-height: none;
+    overflow: visible;
+    transform: none;
+    margin: 4px 12px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    backdrop-filter: none;
+  }
+  .app[data-lid="open"] .mobile-score-splitter { display: none; }
+  .app[data-lid="open"] .chord-buttons-slot { position: relative; top: auto; left: auto; right: auto; width: 100%; max-height: none; margin: 0 0 5px; overflow-x: auto; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot { position: relative !important; top: auto !important; left: auto !important; right: auto !important; width: 100% !important; max-height: none !important; }
+  .app[data-lid="open"] .chord-buttons-slot .chord-grid { display: flex; width: max-content; gap: 6px; }
+  .app[data-lid="open"] .chord-buttons-slot .chord-card { min-width: 88px; }
+  .app[data-lid="open"] .keyboard-scroll { width: 100% !important; margin: 0 !important; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll { width: 100% !important; margin: 0 !important; }
+}
+@media (min-width: 1024px) and (max-height: 760px) {
+  .app[data-lid="open"] .grand-piano-lid > .lid-cover { height: 88px !important; min-height: 88px; }
+  .app[data-lid="open"] .grand-piano-lid .lid-tray { max-height: 112px; min-height: 84px; }
+  .app[data-lid="open"] .grand-piano-lid .lid-tabs { margin-bottom: 3px; padding-bottom: 2px; }
+  .app[data-lid="open"] .visual-area { height: 92px; }
+  .app[data-lid="open"] .piano-housing .keys { height: 124px; }
+  .app[data-lid="open"] .fallboard { height: 42px; }
+  .app[data-lid="open"] .instrument-sub { display: none; }
+  .app[data-lid="open"] .octave-side-controls { min-height: 38px; }
+  .app[data-lid="open"] .keyboard-tools { max-height: 40px; }
+  .app[data-lid="open"] .player { margin: 2px 12px; padding: 3px 10px; }
+  .app[data-lid="open"] .playback-heading { display: none; }
+  .app[data-lid="open"] .timeline { min-height: 32px; }
+  .app[data-lid="open"] .transport button { min-height: 34px; padding: 4px 8px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .app[data-lid="closed"] .piano-lid { display: contents !important; }
+  .app[data-lid="closed"] .piano-lid > .lid-cover {
+    display: flex !important;
+    grid-area: layout;
+    width: 100%;
+    height: 44px !important;
+    min-height: 44px;
+    padding: 0;
+    border: 1px solid #68583b;
+    border-radius: 8px;
+    background: linear-gradient(#292d28, #111411);
+  }
+  .app[data-lid="open"] .piano-lid > .lid-cover {
+    display: flex !important;
+    grid-area: layout;
+    width: 100%;
+    padding: 0;
+    border: 1px solid #68583b;
+    border-radius: 8px;
+    background: linear-gradient(#292d28, #111411);
+  }
+  .app[data-lid="open"] .lid-handle-label { display: inline; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #eee0b6; font-size: 12px; }
+  .app[data-lid="closed"] .lid-handle-label { display: inline; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #eee0b6; font-size: 12px; }
+  .app[data-lid="closed"] .piano-lid .lid-tray { display: none !important; }
+  .app[data-lid="open"] .piano-lid > .lid-cover { min-height: 44px !important; height: 44px !important; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll { width: calc(100% - 112px) !important; margin-inline: 56px !important; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: 38px;
+    max-height: none !important;
+    margin: 0 0 3px;
+    overflow-x: auto;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-grid { display: flex; width: max-content; gap: 5px; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-card { min-width: 68px; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll { width: calc(100% - 112px) !important; margin-inline: 56px !important; }
+}
+.sound-volume-control { display: inline-flex; align-items: center; gap: 8px; min-width: min(260px, 100%); }
+.sound-volume-control input { flex: 1; min-width: 100px; }
+.sound-volume-control span { min-width: 38px; color: #bdb7a5; font-variant-numeric: tabular-nums; }
+
 @media (hover: none) and (pointer: coarse) {
   .key-binding {
     display: none;
   }
 }
+
+/* Final overrides for the compact instrument states. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app[data-lid="closed"] .piano-lid > .lid-cover,
+  .app[data-lid="open"] .piano-lid > .lid-cover {
+    display: flex !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: 38px;
+    max-height: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot {
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow-x: auto;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-grid {
+    display: flex;
+    grid-template-columns: none;
+    width: max-content;
+    gap: 6px;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+}
+
+/* Progressive stages 3–4: one-time lid cue and context-specific controls. */
+.lid-hint {
+  position: absolute;
+  z-index: 35;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  padding: 9px 12px;
+  border: 1px solid #dfc477;
+  border-radius: 999px;
+  background: #17140deF;
+  color: #f2d983;
+  box-shadow: 0 5px 18px #0009;
+  font-size: 13px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.has-lid-hint { position: static; perspective: none; }
+.lid-hint::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  border-top: 1px solid #dfc477;
+  border-left: 1px solid #dfc477;
+  background: #17140d;
+}
+.lid-hint button { border: 0; background: transparent; color: inherit; font-size: 20px; line-height: 1; }
+.has-lid-hint .lid-cover { outline: 2px solid #dabb65; outline-offset: -3px; }
+.lid-handle-label { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .has-lid-hint .lid-cover { outline: 3px solid #dfc477; }
+}
+.app[data-stage="poster"] .lid-hint { display: none; }
+.app[data-stage="poster"] .stage-prompt span {
+  display: inline-flex;
+  width: max-content;
+  max-width: 90%;
+  padding: 7px 13px;
+  border: 1px solid #ffffff25;
+  border-radius: 999px;
+  background: #10120fe8;
+  color: #f1ead8;
+  text-shadow: 0 1px 2px #000;
+  box-shadow: 0 3px 12px #0008;
+}
+@media (min-width: 768px) and (hover: hover) {
+  .app[data-lid="closed"]:not([data-stage="poster"]) .below { display: flex !important; margin-top: 72vh; }
+  .app[data-lid="closed"]:not([data-stage="poster"]) > .stage > footer { display: flex !important; }
+}
+.app[data-stage="poster"] .below { display: none !important; margin-top: 0 !important; }
+@media (max-width: 767px) {
+  .app .below { display: none !important; margin-top: 0 !important; }
+  .app > .stage > footer { display: none !important; }
+}
+.player[data-visible="false"] { display: none !important; }
+.app[data-lid="closed"][data-stage="playing"] .studio > .player.player-mini[data-visible="true"] { display: grid !important; }
+.player.player-mini {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) auto;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 52px;
+  padding: 6px 14px calc(6px + var(--safe-bottom));
+}
+.player-mini .playback-heading,
+.player-mini .transport button:not(.play),
+.player-mini .transport .separator,
+.player-mini .playback-settings,
+.player-mini .toggles,
+.player-mini .loop-fields,
+.player-mini .player-more-toggle { display: none !important; }
+.player-mini .timeline { grid-column: 1; }
+.player-mini .transport-row { display: contents; }
+.player-mini .transport { grid-column: 2; grid-row: 1 / span 2; }
+.player-mini .transport .play { min-width: 44px; min-height: 44px; }
+.piano-housing { position: relative; }
+.octave-side-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+}
+.octave-side-controls button { min-width: 44px; min-height: 44px; font-size: 21px; }
+.octave-side-controls span { min-width: 64px; text-align: center; color: #bdb7a5; font-size: 12px; }
+.chord-buttons-slot { display: none; }
+.app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot { display: block; }
+.chord-buttons-slot .chord-grid { display: grid; }
+@media (min-width: 768px) and (orientation: landscape) {
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot {
+    position: absolute;
+    z-index: 9;
+    top: 44px;
+    left: 0;
+    width: 176px;
+    max-height: calc(100% - 54px);
+    overflow: auto;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll {
+    width: calc(100% - 188px) !important;
+    margin-left: 188px !important;
+  }
+}
+.lid-tabs #lid-tab-chord { order: 3; }
+.lid-tabs #lid-tab-record { order: 4; }
+.sound-tab-settings { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 0; }
+.sound-tab-settings button, .sound-tab-settings select { min-height: 40px; }
+.stand-mode-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; padding: 8px; border: 1px solid #393d35; border-radius: 9px; background: #161a16; }
+.stand-mode-controls button, .stand-mode-controls select { min-height: 40px; }
+.view-select-label { display: inline-flex; align-items: center; gap: 6px; color: #bdb7a5; font-size: 11px; }
+.view-select-label select { min-height: 38px; }
+@media (hover: none) and (pointer: coarse) {
+  .sound-tab-settings .key-binding { display: none !important; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .app > .stage > main { height: calc(100dvh - 48px); padding-top: 0; overflow: hidden; }
+  .app[data-lid="closed"] .studio,
+  .app[data-lid="open"] .studio {
+    height: 100%; min-height: 0; overflow: hidden; gap: 2px;
+  }
+  .app[data-lid="closed"] .studio {
+    grid-template-areas: "layout" "piano" "tools";
+    grid-template-rows: 44px minmax(0, 1fr) auto;
+  }
+  .app[data-lid="open"] .studio {
+    grid-template-areas: "layout" "score" "splitter" "piano" "tools";
+    grid-template-rows: 44px minmax(80px, var(--mobile-tool-height, 38dvh)) 12px minmax(0, 1fr) auto;
+  }
+  .app[data-lid="open"] .piano-lid { display: contents !important; }
+  .app[data-lid="open"] .piano-lid > .lid-cover { grid-area: layout; }
+  .app[data-lid="open"] .piano-lid > .lid-tray { grid-area: score; }
+  .app[data-lid="open"] .piano-lid > .lid-gold-rim { display: none !important; }
+  .app[data-lid="open"] .piano-lid .lid-tray { height: 100% !important; border-radius: 8px; }
+  .app[data-lid="open"] .piano-lid .lid-tray-inner { min-height: 0; padding: 6px 8px; }
+  .app[data-lid="open"] .piano-lid .mobile-track-sheet-heading { display: none; }
+  .app[data-lid="open"] .piano-lid .lid-tabs { margin: 0 0 4px; padding: 0; }
+  .app[data-lid="open"] .piano-lid .lid-tabs button { min-height: 38px; }
+  .app[data-lid="open"] .piano-lid .lid-tray [role="tabpanel"] { padding-bottom: 4px; }
+  .app[data-lid="open"] .piano-housing { grid-area: piano; min-height: 0; height: 100%; }
+  .app[data-lid="open"] .fallboard { height: 30px; }
+  .app[data-lid="open"] .instrument-sub { display: none; }
+  .app[data-lid="open"] .piano-housing .keys { height: calc(100% - 50px) !important; min-height: 0; max-height: none; }
+  .app[data-lid="open"] .piano-housing .keyboard-scroll { width: calc(100% - 112px) !important; margin-inline: 56px !important; }
+  .app[data-lid="open"] .octave-side-controls { position: absolute; inset: 36px 0 8px; display: block; min-height: 0; z-index: 8; pointer-events: none; }
+  .app[data-lid="open"] .octave-side-controls button { position: absolute; top: 50%; width: 48px; height: 48px; padding: 0; transform: translateY(-50%); pointer-events: auto; }
+  .app[data-lid="open"] .octave-side-controls button[aria-label="降低八度"] { left: 4px; }
+  .app[data-lid="open"] .octave-side-controls button[aria-label="提高八度"] { right: 4px; }
+  .app[data-lid="open"] .octave-side-controls span { display: none; }
+  .app[data-lid="open"] .mobile-score-splitter { grid-area: splitter; position: relative; inset: auto; width: 100%; height: 12px; }
+  .app[data-lid="open"] .mobile-score-splitter > span { width: 56px; height: 4px; }
+  .app[data-lid="open"] .keyboard-tools { grid-area: tools; }
+  .app[data-lid="open"] .chord-buttons-slot { top: 36px; }
+  .app[data-lid="closed"][data-stage="playing"] .piano-housing { padding-inline: 0; }
+  .app[data-lid="closed"][data-stage="playing"] .keyboard-scroll {
+    width: calc(100% - 112px) !important;
+    margin-inline: 56px !important;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .octave-side-controls {
+    position: absolute;
+    inset: 40px 0 34px;
+    display: block;
+    min-height: 0;
+    z-index: 8;
+    pointer-events: none;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .octave-side-controls button {
+    position: absolute;
+    top: 50%;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    transform: translateY(-50%);
+    pointer-events: auto;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .octave-side-controls button[aria-label="降低八度"] { left: 4px; }
+  .app[data-lid="closed"][data-stage="playing"] .octave-side-controls button[aria-label="提高八度"] { right: 4px; }
+  .app[data-lid="closed"][data-stage="playing"] .octave-side-controls span { display: none; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot {
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    left: 56px;
+    right: 56px;
+    height: 38px;
+    overflow-x: auto;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-grid { display: flex; gap: 5px; width: max-content; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-card { min-width: 68px; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-pad { min-height: 34px; padding: 3px 7px; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-pad small { display: none; }
+  .lid-handle-label { display: inline; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); color: #eee0b6; font-size: 12px; }
+  @keyframes lid-handle-bounce { 0%, 100% { transform: translate(-50%,-50%); } 40% { transform: translate(-50%, 2px); } 70% { transform: translate(-50%,-1px); } }
+  .is-hint-bouncing .lid-handle-label { animation: lid-handle-bounce .62s ease-out; }
+  .piano-lid > .lid-cover.lid-handle { height: 32px !important; min-height: 32px; touch-action: pan-y; }
+  .piano-lid > .lid-cover.lid-handle .grand-lid-art,
+  .piano-lid > .lid-cover.lid-handle .lid-emblem,
+  .piano-lid > .lid-cover.lid-handle .lid-invitation { display: none !important; }
+  .lid-hint { pointer-events: auto; }
+  .lid-hint button { pointer-events: auto; }
+  .piano-lid.is-open .lid-tray {
+    position: relative !important;
+    inset: auto !important;
+    width: 100%;
+    height: 100% !important;
+    max-height: none !important;
+    overflow: auto;
+  }
+}
+
+/* Final stage 3–4 layout corrections. Heights below are intentional viewport budgets. */
+@media (min-width: 1024px) {
+  .app[data-lid="open"] .studio {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 50px);
+    gap: 4px;
+  }
+  .app[data-lid="open"] .grand-piano-lid > .lid-cover {
+    height: 96px !important;
+    min-height: 96px;
+  }
+  /* At 900px: 96px lid + 358px tray (44 tabs + 300 tools + padding) + 56px player + keys. */
+  .app[data-lid="open"] .grand-piano-lid .lid-tray {
+    height: 358px !important;
+    min-height: 358px;
+    max-height: 358px;
+    overflow: hidden;
+  }
+  .app[data-lid="open"] .grand-piano-lid .lid-tray-inner {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    padding: 4px 20px 6px;
+    overflow: hidden;
+  }
+  .app[data-lid="open"] .grand-piano-lid .lid-tabs {
+    flex: 0 0 44px;
+    min-height: 44px;
+    margin: 0 0 4px;
+    padding: 0;
+  }
+  .app[data-lid="open"] .grand-piano-lid .lid-tabs button { min-height: 40px; }
+  .app[data-lid="open"] .grand-piano-lid .lid-tray [role="tabpanel"]:not([hidden]) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .app[data-lid="open"] .piano-lid.is-open .music-desk { display: block !important; }
+  .app[data-lid="open"] .piano-lid.is-open .midi-desk { display: block !important; }
+  .app[data-lid="open"] .mode-row { display: none !important; }
+  .app[data-lid="open"] .desk-crest,
+  .app[data-lid="open"] .music-desk-ledge { display: none !important; }
+  .app[data-lid="open"] .stand-mode-controls { gap: 4px; margin: 0 0 4px; padding: 2px 4px; }
+  .app[data-lid="open"] .stand-mode-controls button,
+  .app[data-lid="open"] .stand-mode-controls select { min-height: 34px; }
+  .app[data-lid="open"] .studio-top { height: 52px; padding-inline: 10px; }
+  .app[data-lid="open"] .visual-area { height: 200px !important; min-height: 200px; }
+  .app[data-lid="open"] .player {
+    display: grid;
+    grid-template-columns: 44px minmax(0, .8fr) minmax(210px, 1.4fr) minmax(106px, auto) 82px;
+    grid-template-rows: 56px;
+    column-gap: 14px;
+    align-items: center;
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    margin: 0 12px;
+    padding: 0 8px;
+    overflow: hidden;
+    border-radius: 8px;
+    position: relative;
+    inset: auto;
+    transform: none;
+    z-index: 2;
+    backdrop-filter: none;
+  }
+  .app[data-lid="open"] .playback-heading { display: contents; }
+  .app[data-lid="open"] .playback-heading > strong {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app[data-lid="open"] .playback-heading .player-more-toggle { grid-column: 5; grid-row: 1; min-height: 40px; white-space: nowrap; }
+  .app[data-lid="open"] .player > .timeline { grid-column: 3; grid-row: 1; min-width: 0; min-height: 36px; gap: 8px; }
+  .app[data-lid="open"] .player > .timeline input { min-width: 0; }
+  .app[data-lid="open"] .transport-row,
+  .app[data-lid="open"] .transport { display: contents; }
+  .app[data-lid="open"] .transport .play { grid-column: 1; grid-row: 1; width: 40px; min-width: 40px; height: 40px; min-height: 40px; margin: 0; }
+  .app[data-lid="open"] .transport > button:not(.play),
+  .app[data-lid="open"] .transport > .separator,
+  .app[data-lid="open"] .toggles,
+  .app[data-lid="open"] .loop-fields { display: none !important; }
+  .app[data-lid="open"] .playback-settings { grid-column: 4; grid-row: 1; min-width: 0; padding: 0; white-space: nowrap; }
+  .app[data-lid="open"] .playback-settings > label:not(:first-child),
+  .app[data-lid="open"] .playback-settings > .separator,
+  .app[data-lid="open"] .playback-settings > svg,
+  .app[data-lid="open"] .playback-settings > input,
+  .app[data-lid="open"] .playback-settings > span { display: none !important; }
+  .app[data-lid="open"] .playback-settings select { min-height: 38px; }
+  .app[data-lid="open"] .piano-housing .keys { height: clamp(132px, 19vh, 176px) !important; }
+  .app[data-lid="open"] .keyboard-tools { max-height: 40px; overflow: auto; }
+
+  @media (max-height: 760px) {
+    .app[data-lid="open"] .grand-piano-lid > .lid-cover { height: 88px !important; min-height: 88px; }
+    /* At 720px: 88px lid + 258px tray (44 tabs + 200 tools + padding); player stays 56px. */
+    .app[data-lid="open"] .grand-piano-lid .lid-tray {
+      height: 258px !important; min-height: 258px; max-height: 258px;
+    }
+    .app[data-lid="open"] .visual-area { height: 160px !important; min-height: 160px; }
+    .app[data-lid="open"] .piano-housing .keys { height: 124px !important; }
+    .app[data-lid="open"] .fallboard { height: 42px; }
+  }
+}
+
+/* Chord pads remain in normal flow above the keyboard, whether the lid is open or closed. */
+.app[data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot {
+  display: block !important;
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: auto;
+  max-height: none !important;
+  margin: 0 0 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.app[data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-grid {
+  display: flex !important;
+  width: max-content;
+  gap: 6px;
+}
+.app[data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-card { min-width: 84px; }
+.app[data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll { width: 100% !important; margin-inline: 0 !important; }
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .app[data-lid="open"] > .stage > header { display: none !important; }
+  .app > .stage > main {
+    width: 100%;
+    max-width: none;
+    height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+    padding: 0 max(var(--safe-left), 8px) 0 max(var(--safe-right), 8px);
+    overflow: hidden;
+  }
+  .app[data-lid="open"] .studio {
+    display: grid !important;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "layout" "score" "splitter" "player" "piano";
+    grid-template-rows: 44px minmax(60px, var(--mobile-tool-height, 60px)) 24px 44px minmax(110px, 1fr);
+    gap: 0;
+    overflow: hidden;
+  }
+  .app[data-lid="open"] .piano-lid { display: contents !important; }
+  .app[data-lid="open"] .piano-lid > .lid-cover {
+    grid-area: layout;
+    display: flex !important;
+    width: 100%;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0;
+  }
+  .app[data-lid="open"] .piano-lid > .lid-cover.lid-handle { height: 44px !important; min-height: 44px !important; }
+  .app[data-lid="open"] .piano-lid > .lid-tray {
+    grid-area: score;
+    display: block !important;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden;
+    border-radius: 7px;
+  }
+  .app[data-lid="open"] .piano-lid .lid-tray-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 0 6px;
+    overflow: hidden;
+  }
+  .app[data-lid="open"] .piano-lid .mobile-track-sheet-heading { display: none !important; }
+  .app[data-lid="open"] .piano-lid .lid-tabs {
+    flex: 0 0 40px;
+    min-height: 40px;
+    margin: 0;
+    padding: 0;
+  }
+  .app[data-lid="open"] .piano-lid .lid-tabs button { min-height: 38px; padding: 4px 10px; }
+  .app[data-lid="open"] .piano-lid .lid-tray [role="tabpanel"]:not([hidden]) {
+    display: block !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 2px 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .app[data-lid="open"] .piano-lid .lid-tray [role="tabpanel"][hidden] { display: none !important; }
+  .app[data-lid="open"] .piano-lid .music-desk { display: block !important; }
+  .app[data-lid="open"] .piano-lid .midi-desk { display: block !important; }
+  .app[data-lid="open"] .mode-row,
+  .app[data-lid="open"] .keyboard-tools { display: none !important; }
+  .app[data-lid="open"] .mobile-score-splitter { grid-area: splitter; position: relative; inset: auto; width: 100%; height: 24px; min-height: 24px; }
+  .app[data-lid="open"] .mobile-score-splitter > span { width: 42px; height: 3px; }
+  .app[data-lid="open"] .player[data-visible="true"] {
+    grid-area: player;
+    display: grid;
+    position: static !important;
+    inset: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    z-index: auto;
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    grid-template-columns: 40px minmax(92px, .75fr) minmax(100px, 1fr) 44px;
+    grid-template-rows: 44px;
+    column-gap: 8px;
+    align-items: center;
+    margin: 0;
+    padding: 0 4px;
+    overflow: hidden;
+    border-radius: 6px;
+  }
+  .app[data-lid="open"] .player:not([data-visible="true"]) { display: none !important; }
+  .app[data-lid="open"] .playback-heading { display: contents; }
+  .app[data-lid="open"] .playback-heading > strong {
+    grid-column: 2; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px;
+  }
+  .app[data-lid="open"] .playback-heading .player-more-toggle {
+    grid-column: 4; grid-row: 1; min-width: 40px; min-height: 40px; padding: 3px; font-size: 0;
+  }
+  .app[data-lid="open"] .player > .timeline { grid-column: 3; grid-row: 1; min-width: 0; min-height: 32px; gap: 4px; }
+  .app[data-lid="open"] .player > .timeline input { min-width: 0; }
+  .app[data-lid="open"] .timeline > span { display: none; }
+  .app[data-lid="open"] .transport-row,
+  .app[data-lid="open"] .transport { display: contents; }
+  .app[data-lid="open"] .transport .play { grid-column: 1; grid-row: 1; width: 36px; min-width: 36px; height: 36px; min-height: 36px; margin: 0; padding: 4px; }
+  .app[data-lid="open"] .transport > button:not(.play),
+  .app[data-lid="open"] .transport > .separator,
+  .app[data-lid="open"] .playback-settings,
+  .app[data-lid="open"] .toggles,
+  .app[data-lid="open"] .loop-fields { display: none !important; }
+  .app[data-lid="open"] .piano-housing {
+    grid-area: piano;
+    width: 100%;
+    min-width: 0;
+    min-height: 110px;
+    height: 100%;
+    overflow: visible;
+  }
+  .app[data-lid="open"] .fallboard { height: 30px !important; }
+  .app[data-lid="open"] .instrument-sub { display: none !important; }
+  .app[data-lid="open"] .piano-housing .keys { height: calc(100% - 50px) !important; min-height: 60px !important; max-height: none; }
+  .app[data-lid="open"] .piano-housing .keyboard-scroll { width: calc(100% - 112px) !important; margin-inline: 56px !important; }
+  .app[data-lid="closed"][data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll { width: calc(100% - 112px) !important; margin-inline: 56px !important; }
+  .app[data-lid="open"] .octave-side-controls { position: absolute; inset: 34px 0 4px; display: block; min-height: 0; z-index: 8; pointer-events: none; }
+  .app[data-lid="open"] .octave-side-controls button { position: absolute; top: 50%; width: 44px; height: 44px; padding: 0; transform: translateY(-50%); pointer-events: auto; }
+  .app[data-lid="open"] .octave-side-controls button[aria-label="降低八度"] { left: 4px; }
+  .app[data-lid="open"] .octave-side-controls button[aria-label="提高八度"] { right: 4px; }
+  .app[data-lid="open"] .octave-side-controls span { display: none; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot {
+    height: 36px;
+    margin: 0 0 2px;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-card { min-width: 70px; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-pad { min-height: 32px; padding: 2px 6px; }
+  .app[data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-pad small { display: none; }
+  .app[data-lid="closed"][data-stage="playing"] .piano-housing { width: 100%; max-width: none; }
+  .app[data-lid="closed"][data-stage="playing"] .chord-buttons-slot { height: 36px; }
+}
+
+/* iPhone-style portrait fallback: preserve the landscape stage inside the rotated viewport. */
+.app[data-rotate="true"] .stage {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vh;
+  height: 100vw;
+  transform-origin: top left;
+  transform: translateX(100vw) rotate(90deg);
+  overflow: hidden;
+}
+@supports (width: 100dvh) {
+  .app[data-rotate="true"] .stage { width: 100dvh; }
+}
+.app[data-rotate="true"] > .stage {
+  --safe-top: env(safe-area-inset-right, 0px);
+  --safe-right: env(safe-area-inset-bottom, 0px);
+  --safe-bottom: env(safe-area-inset-left, 0px);
+  --safe-left: env(safe-area-inset-top, 0px);
+}
+html[data-rotate="true"],
+html[data-rotate="true"] body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.app[data-rotate="true"] {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+@supports (height: 100dvh) {
+  .app[data-rotate="true"] { height: 100dvh; }
+}
+.stage-leave {
+  position: absolute;
+  z-index: 1200;
+  top: max(6px, var(--safe-top));
+  right: max(8px, var(--safe-right));
+  min-height: 40px;
+  padding: 6px 11px;
+  border: 1px solid #a58f5d;
+  border-radius: 22px;
+  background: #11150fe8;
+  color: #f0dda9;
+  box-shadow: 0 3px 14px #0008;
+}
+.stage-rotate-hint {
+  position: absolute;
+  z-index: 1190;
+  bottom: max(8px, var(--safe-bottom));
+  left: max(8px, var(--safe-left));
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid #c9b78866;
+  border-radius: 18px;
+  background: #11150fe8;
+  color: #ead8a2;
+  box-shadow: 0 3px 12px #0008;
+  pointer-events: none;
+  font-size: 11px;
+}
+.app[data-rotate="true"] .player {
+  width: min(calc(var(--stage-width) - 24px), 1292px);
+  max-height: calc(var(--stage-height) - 16px - var(--safe-top) - var(--safe-bottom));
+  bottom: max(8px, var(--safe-bottom));
+}
+@media (orientation: portrait) and (hover: none) and (pointer: coarse) {
+  .app[data-rotate="true"] > .stage > header {
+    height: 48px;
+    max-width: none;
+    padding: var(--safe-top) 104px 0 var(--safe-left);
+  }
+  .app[data-rotate="true"] > .stage > header nav button { min-height: 40px; }
+  .app[data-rotate="true"][data-lid="open"] > .stage > header { display: none !important; }
+  .app[data-rotate="true"][data-lid="open"] .stage-leave { top: max(6px, var(--safe-top)); }
+  .app[data-rotate="true"] > .stage > main {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    height: calc(var(--stage-height) - 48px);
+    padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+    overflow: hidden;
+  }
+  .app[data-rotate="true"][data-lid="open"] > .stage > main {
+    height: var(--stage-height);
+  }
+  .app[data-rotate="true"] .studio {
+    display: grid !important;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    overflow: hidden;
+  }
+  .app[data-rotate="true"][data-lid="closed"] .studio {
+    grid-template-areas: "layout" "piano" "tools";
+    grid-template-rows: 44px minmax(0, 1fr) auto;
+  }
+  .app[data-rotate="true"] .piano-lid { display: contents !important; }
+  .app[data-rotate="true"][data-lid="closed"] .piano-lid > .lid-cover,
+  .app[data-rotate="true"][data-lid="open"] .piano-lid > .lid-cover {
+    grid-area: layout;
+    display: flex !important;
+    width: 100%;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0;
+  }
+  .app[data-rotate="true"] .piano-housing {
+    grid-area: piano;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    padding-inline: 0;
+  }
+  .app[data-rotate="true"] .studio .keys { height: clamp(150px, 52vw, 280px); }
+  .app[data-rotate="true"] .piano-housing .keyboard-scroll {
+    width: calc(100% - 112px) !important;
+    margin-inline: 56px !important;
+  }
+  .app[data-rotate="true"] .instrument-sub { display: none !important; }
+  .app[data-rotate="true"][data-lid="closed"] .studio > .piano-housing::after { display: none; }
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .studio > .keyboard-tools {
+    display: contents !important;
+  }
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools > div:first-child,
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools label,
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools input,
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools .separator,
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools > div:last-child > span {
+    display: none !important;
+  }
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools > div:last-child { display: contents; }
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools button[aria-label="降低八度"],
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools button[aria-label="提高八度"] {
+    position: absolute;
+    z-index: 15;
+    top: calc(42px + 38px + 24vw);
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0;
+    border: 1px solid #8b774b;
+    border-radius: 10px;
+    background: #171a17ed;
+    color: #e4d19e;
+    font-size: 23px;
+  }
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools button[aria-label="降低八度"] { left: 0; }
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .keyboard-tools button[aria-label="提高八度"] { right: 0; }
+
+  .app[data-rotate="true"][data-lid="open"] .studio {
+    grid-template-areas: "layout" "score" "splitter" "player" "piano";
+    grid-template-rows: 44px minmax(60px, var(--mobile-tool-height, 60px)) 24px 44px minmax(110px, 1fr);
+    gap: 0;
+  }
+  .app[data-rotate="true"][data-lid="open"] .piano-lid > .lid-tray {
+    grid-area: score;
+    display: block !important;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden;
+  }
+  .app[data-rotate="true"][data-lid="open"] .lid-tray-inner {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 0 6px;
+    overflow: hidden;
+  }
+  .app[data-rotate="true"][data-lid="open"] .mobile-track-sheet-heading { display: none !important; }
+  .app[data-rotate="true"][data-lid="open"] .lid-tabs {
+    display: flex !important;
+    flex: 0 0 40px;
+    min-height: 40px;
+    margin: 0;
+    padding: 0;
+  }
+  .app[data-rotate="true"][data-lid="open"] .lid-tabs button { min-height: 38px; padding: 4px 10px; }
+  .app[data-rotate="true"][data-lid="open"] .lid-tray [role="tabpanel"]:not([hidden]) {
+    display: block !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 2px 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .app[data-rotate="true"][data-lid="open"] .lid-tray [role="tabpanel"][hidden] { display: none !important; }
+  .app[data-rotate="true"][data-lid="open"] .music-desk,
+  .app[data-rotate="true"][data-lid="open"] .midi-desk { display: block !important; }
+  .app[data-rotate="true"][data-lid="open"] .mode-row,
+  .app[data-rotate="true"][data-lid="open"] .keyboard-tools { display: none !important; }
+  .app[data-rotate="true"][data-lid="open"] .mobile-score-splitter {
+    grid-area: splitter;
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 24px;
+    min-height: 24px;
+  }
+  .app[data-rotate="true"][data-lid="open"] .player[data-visible="true"] {
+    grid-area: player;
+    display: grid;
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    z-index: auto;
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    grid-template-columns: 40px minmax(92px, .75fr) minmax(100px, 1fr) 44px;
+    grid-template-rows: 44px;
+    column-gap: 8px;
+    align-items: center;
+    margin: 0;
+    padding: 0 4px;
+    overflow: hidden;
+    border-radius: 6px;
+  }
+  .app[data-rotate="true"][data-lid="open"] .player:not([data-visible="true"]) { display: none !important; }
+  .app[data-rotate="true"][data-lid="open"] .playback-heading { display: contents; }
+  .app[data-rotate="true"][data-lid="open"] .playback-heading > strong {
+    grid-column: 2; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px;
+  }
+  .app[data-rotate="true"][data-lid="open"] .playback-heading .player-more-toggle {
+    grid-column: 4; grid-row: 1; min-width: 40px; min-height: 40px; padding: 3px; font-size: 0;
+  }
+  .app[data-rotate="true"][data-lid="open"] .player > .timeline {
+    grid-column: 3; grid-row: 1; min-width: 0; min-height: 32px; gap: 4px;
+  }
+  .app[data-rotate="true"][data-lid="open"] .timeline > span { display: none; }
+  .app[data-rotate="true"][data-lid="open"] .transport-row,
+  .app[data-rotate="true"][data-lid="open"] .transport { display: contents; }
+  .app[data-rotate="true"][data-lid="open"] .transport .play {
+    grid-column: 1; grid-row: 1; width: 36px; min-width: 36px; height: 36px; min-height: 36px; margin: 0; padding: 4px;
+  }
+  .app[data-rotate="true"][data-lid="open"] .transport > button:not(.play),
+  .app[data-rotate="true"][data-lid="open"] .transport > .separator,
+  .app[data-rotate="true"][data-lid="open"] .playback-settings,
+  .app[data-rotate="true"][data-lid="open"] .toggles,
+  .app[data-rotate="true"][data-lid="open"] .loop-fields { display: none !important; }
+  .app[data-rotate="true"][data-lid="open"] .piano-housing { min-height: 110px; height: 100%; overflow: visible; }
+  .app[data-rotate="true"][data-lid="open"] .fallboard { height: 30px !important; }
+  .app[data-rotate="true"][data-lid="open"] .piano-housing .keys { height: calc(100% - 50px) !important; min-height: 60px !important; max-height: none; }
+  .app[data-rotate="true"][data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll,
+  .app[data-rotate="true"][data-lid="closed"][data-lid-tab="chord"][data-chord-enabled="true"] .keyboard-scroll {
+    width: calc(100% - 112px) !important; margin-inline: 56px !important;
+  }
+  .app[data-rotate="true"][data-lid="open"] .octave-side-controls {
+    position: absolute; inset: 34px 0 4px; display: block; min-height: 0; z-index: 8; pointer-events: none;
+  }
+  .app[data-rotate="true"][data-lid="open"] .octave-side-controls button {
+    position: absolute; top: 50%; width: 44px; height: 44px; padding: 0; transform: translateY(-50%); pointer-events: auto;
+  }
+  .app[data-rotate="true"][data-lid="open"] .octave-side-controls button[aria-label="降低八度"] { left: 4px; }
+  .app[data-rotate="true"][data-lid="open"] .octave-side-controls button[aria-label="提高八度"] { right: 4px; }
+  .app[data-rotate="true"][data-lid="open"] .octave-side-controls span { display: none; }
+  .app[data-rotate="true"][data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot {
+    height: 36px; margin: 0 0 2px;
+  }
+  .app[data-rotate="true"][data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-card { min-width: 70px; }
+  .app[data-rotate="true"][data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-pad { min-height: 32px; padding: 2px 6px; }
+  .app[data-rotate="true"][data-lid="open"][data-lid-tab="chord"][data-chord-enabled="true"] .chord-buttons-slot .chord-pad small { display: none; }
+}
+
+/* In open mobile landscape, let the key row itself consume the final 1fr track. */
+@media (orientation: landscape) and (max-height: 500px), (max-height: 500px) {
+  .app[data-lid="open"] .piano-housing,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing {
+    display: flex !important;
+    flex-direction: column;
+    min-height: 110px;
+    height: 100%;
+  }
+  .app[data-lid="open"] .piano-housing > .fallboard,
+  .app[data-lid="open"] .piano-housing > .felt,
+  .app[data-lid="open"] .piano-housing > .piano-lip,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .fallboard,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .felt,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .piano-lip { display: none !important; }
+  .app[data-lid="open"] .piano-housing > .keyboard-scroll,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .keyboard-scroll {
+    flex: 1 1 0;
+    width: calc(100% - 112px) !important;
+    height: 100% !important;
+    min-height: 110px;
+    margin-inline: 56px !important;
+  }
+  .app[data-lid="open"] .piano-housing .keys,
+  .app[data-rotate="true"][data-lid="open"] .piano-housing .keys {
+    height: 100% !important;
+    min-height: 110px !important;
+    max-height: none;
+  }
+  .app[data-lid="open"] .octave-side-controls,
+  .app[data-rotate="true"][data-lid="open"] .octave-side-controls { inset: 0 !important; }
+}
+
+/* The emulated landscape stage is logically short even while the device viewport is portrait. */
+.app[data-rotate="true"][data-lid="open"] .piano-housing {
+  display: flex !important;
+  flex-direction: column;
+  min-height: 110px;
+  height: 100%;
+}
+.app[data-rotate="true"][data-lid="open"] .piano-housing > .fallboard,
+.app[data-rotate="true"][data-lid="open"] .piano-housing > .felt,
+.app[data-rotate="true"][data-lid="open"] .piano-housing > .piano-lip { display: none !important; }
+.app[data-rotate="true"][data-lid="open"] .piano-housing > .keyboard-scroll {
+  flex: 1 1 0;
+  width: calc(100% - 112px) !important;
+  height: 100% !important;
+  min-height: 110px;
+  margin-inline: 56px !important;
+}
+.app[data-rotate="true"][data-lid="open"] .piano-housing .keys {
+  height: 100% !important;
+  min-height: 110px !important;
+  max-height: none;
+}
+.app[data-rotate="true"][data-lid="open"] .octave-side-controls { inset: 0 !important; }
+
+/* Preserve the old native range sizing and visibility rules for StageSlider. */
+.roll-tools .stage-slider { flex: 0 0 48px; width: 48px; min-width: 34px; }
+.timeline .stage-slider { flex: 1 1 auto; min-width: 0; }
+.playback-settings .stage-slider { flex: 0 1 78px; width: 78px; min-width: 44px; }
+.setting-line > .stage-slider { flex: 0 1 65%; width: 65%; min-width: 80px; }
+.sound-volume-control > .stage-slider { flex: 1 1 auto; min-width: 100px; }
+.player:not(.more-controls-open) .playback-settings > .stage-slider { display: none; }
+@media (max-width: 767px) {
+  .playback-settings > .stage-slider { width: 65px; }
+  .timeline > .stage-slider { min-height: 44px; touch-action: none; }
+}
+
+/* Give the mobile tool viewport enough of the saved height for real panel content. */
+.mobile-current-song { display: none; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .app[data-lid="open"] .piano-lid .lid-tabs { flex: 0 0 36px !important; min-height: 36px !important; height: 36px; margin: 0 !important; padding: 0; }
+  .app[data-lid="open"] .piano-lid .lid-tabs button { min-height: 32px !important; height: 32px; padding: 2px 8px; }
+  .app[data-lid="open"] .grand-workbench { display: flex !important; flex-direction: column; gap: 4px; padding: 0; }
+  .app[data-lid="open"] .grand-workbench > .midi-desk { order: 1; width: 100%; padding: 0; }
+  .app[data-lid="open"] .grand-workbench > .music-desk { order: 2; width: 100%; }
+  .app[data-lid="open"] .grand-workbench > .stand-mode-controls { order: 3; margin: 0; }
+  .app[data-lid="open"] .midi-desk > .eyebrow,
+  .app[data-lid="open"] .midi-desk > h3,
+  .app[data-lid="open"] .midi-drop-slot { display: none !important; }
+  .app[data-lid="open"] .mobile-current-song { display: block; margin: 0 0 4px; color: #d9c99f; font-size: 11px; font-weight: 600; }
+  .app[data-lid="open"] .midi-desk .import-box { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+  .app[data-lid="open"] .midi-desk .import-bottom { order: 1; padding: 0; margin: 0; }
+  .app[data-lid="open"] .midi-desk .url-row { order: 2; }
+  .app[data-lid="open"] .midi-desk .import-box > .status { order: 3; margin: 0; }
+  .app[data-lid="open"] .midi-desk .import-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+  .app[data-lid="open"] .midi-desk .import-actions > .separator { display: none; }
+  .app[data-lid="open"] .midi-desk .import-actions > button:nth-of-type(3) { order: 0; }
+  .app[data-lid="open"] .midi-desk .import-actions > button:nth-of-type(1) { order: 1; }
+  .app[data-lid="open"] .midi-desk .import-actions > button:nth-of-type(2) { order: 2; }
+}
+.app[data-rotate="true"][data-lid="open"] .lid-tabs { flex: 0 0 36px !important; min-height: 36px !important; height: 36px; margin: 0 !important; padding: 0; }
+.app[data-rotate="true"][data-lid="open"] .lid-tabs button { min-height: 32px !important; height: 32px; padding: 2px 8px; }
+.app[data-rotate="true"][data-lid="open"] .grand-workbench { display: flex !important; flex-direction: column; gap: 4px; padding: 0; }
+.app[data-rotate="true"][data-lid="open"] .grand-workbench > .midi-desk { order: 1; width: 100%; padding: 0; }
+.app[data-rotate="true"][data-lid="open"] .grand-workbench > .music-desk { order: 2; width: 100%; }
+.app[data-rotate="true"][data-lid="open"] .grand-workbench > .stand-mode-controls { order: 3; margin: 0; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk > .eyebrow,
+.app[data-rotate="true"][data-lid="open"] .midi-desk > h3,
+.app[data-rotate="true"][data-lid="open"] .midi-drop-slot { display: none !important; }
+.app[data-rotate="true"][data-lid="open"] .mobile-current-song { display: block; margin: 0 0 4px; color: #d9c99f; font-size: 11px; font-weight: 600; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .import-box { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .import-bottom { order: 1; padding: 0; margin: 0; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .url-row { order: 2; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .import-box > .status { order: 3; margin: 0; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .import-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .import-actions > .separator { display: none; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .import-actions > button:nth-of-type(3) { order: 0; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .import-actions > button:nth-of-type(1) { order: 1; }
+.app[data-rotate="true"][data-lid="open"] .midi-desk .import-actions > button:nth-of-type(2) { order: 2; }
+
+/* Keep the transport controls on the open piano lid, centered above its tools. */
+.lid-playback-slot {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  min-width: 0;
+}
+.app[data-lid="open"] .lid-playback-slot > .player[data-visible="true"] {
+  position: relative !important;
+  inset: auto !important;
+  grid-area: auto !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-rows: 38px 26px;
+  align-items: center;
+  gap: 0 12px;
+  width: 100%;
+  height: 64px;
+  min-height: 64px;
+  max-height: none;
+  margin: 0;
+  padding: 0 10px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  z-index: auto;
+}
+.app[data-lid="open"] .lid-playback-slot .playback-heading { display: contents; }
+.app[data-lid="open"] .lid-playback-slot .playback-heading > strong {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #d8c894;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app[data-lid="open"] .lid-playback-slot .playback-heading .player-more-toggle {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  min-height: 34px;
+}
+.app[data-lid="open"] .lid-playback-slot > .player > .timeline {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 24px;
+  margin: 0;
+}
+.app[data-lid="open"] .lid-playback-slot .transport-row { display: contents; }
+.app[data-lid="open"] .lid-playback-slot .transport {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+}
+.app[data-lid="open"] .lid-playback-slot .transport > button,
+.app[data-lid="open"] .lid-playback-slot .transport > button[title="重播"],
+.app[data-lid="open"] .lid-playback-slot .transport > button[title="停止"],
+.app[data-lid="open"] .lid-playback-slot .transport > button[title="循環"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+}
+.app[data-lid="open"] .lid-playback-slot .transport > .play {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+}
+.app[data-lid="open"] .lid-playback-slot .transport > .separator { display: none !important; }
+.app[data-lid="open"] .lid-playback-slot .playback-settings,
+.app[data-lid="open"] .lid-playback-slot .toggles,
+.app[data-lid="open"] .lid-playback-slot .loop-fields { display: none !important; }
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open {
+  grid-template-rows: 38px 26px auto;
+  height: auto;
+}
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open .playback-settings,
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open .toggles {
+  display: flex !important;
+  grid-row: 3;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+}
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open .playback-settings { grid-column: 1 / 3; }
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open .toggles { grid-column: 3; }
+
+@media (min-width: 1024px) {
+  /* The former 56px external player row now lives inside the tray. */
+  .app[data-lid="open"] .grand-piano-lid .lid-tray {
+    height: 422px !important;
+    min-height: 422px;
+    max-height: 422px;
+  }
+  .app[data-lid="open"] .grand-piano-lid .lid-playback-slot {
+    flex: 0 0 64px;
+    order: 1;
+  }
+  .app[data-lid="open"] .grand-piano-lid .lid-tray [role="tabpanel"] { order: 2; }
+  .app[data-lid="open"][data-lid-tab="chord"] .grand-piano-lid .lid-tray {
+    height: 300px !important;
+    min-height: 300px;
+    max-height: 300px;
+  }
+  .app[data-lid="open"][data-lid-tab="record"] .grand-piano-lid .lid-tray {
+    height: 392px !important;
+    min-height: 392px;
+    max-height: 392px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px), (max-width: 767px) and (min-height: 501px) {
+  .app[data-lid="open"]:not([data-rotate="true"]) .studio,
+  .app[data-rotate="true"][data-lid="open"] .studio {
+    grid-template-areas: "layout" "score" "splitter" "piano";
+    grid-template-rows: 44px minmax(104px, var(--mobile-tool-height, 104px)) 24px minmax(110px, 1fr);
+  }
+  .app[data-lid="open"]:not([data-rotate="true"]) .lid-playback-slot,
+  .app[data-rotate="true"][data-lid="open"] .lid-playback-slot { flex-basis: 44px; }
+  .app[data-lid="open"]:not([data-rotate="true"]) .lid-playback-slot > .player[data-visible="true"],
+  .app[data-rotate="true"][data-lid="open"] .lid-playback-slot > .player[data-visible="true"] {
+    display: flex !important;
+    justify-content: center;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+  .app[data-lid="open"]:not([data-rotate="true"]) .lid-playback-slot .playback-heading,
+  .app[data-lid="open"]:not([data-rotate="true"]) .lid-playback-slot .timeline,
+  .app[data-rotate="true"][data-lid="open"] .lid-playback-slot .playback-heading,
+  .app[data-rotate="true"][data-lid="open"] .lid-playback-slot .timeline { display: none !important; }
+  .app[data-lid="open"]:not([data-rotate="true"]) .lid-playback-slot .transport,
+  .app[data-rotate="true"][data-lid="open"] .lid-playback-slot .transport { display: flex !important; }
+}
+.app[data-url-input="true"] .midi-desk .import-box .url-row { order: 0; }
+.app[data-url-input="true"] .midi-desk .import-box .import-bottom { order: 1; }
+
+/* Center only the touch portrait poster within its safe-area viewport. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .app[data-stage="poster"][data-rotate="false"] {
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  .app[data-stage="poster"][data-rotate="false"] > .stage {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+  .app[data-stage="poster"][data-rotate="false"] > .stage > main {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    margin: 0;
+    padding: var(--safe-top) max(16px, var(--safe-right)) var(--safe-bottom) max(16px, var(--safe-left));
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .app[data-stage="poster"][data-rotate="false"] .studio {
+    position: relative;
+    flex: 0 0 auto;
+    width: 100%;
+    margin: 0 !important;
+  }
+}
+
+/* A three-quarter, slightly elevated opening view that settles into the playing view. */
+.app .studio {
+  transform: none;
+  transform-origin: 50% 52%;
+  transform-style: preserve-3d;
+  transition: transform 820ms cubic-bezier(.2, .78, .22, 1);
+}
+.app[data-stage="poster"] {
+  background:
+    radial-gradient(ellipse at 50% 45%, #34352d 0%, #171a17 48%, #080a08 100%);
+}
+.app[data-stage="poster"] > .stage > main {
+  perspective: 1500px;
+  overflow: visible;
+}
+.app[data-stage="poster"] .studio {
+  width: min(1180px, 90vw);
+  transform: perspective(1500px) rotateX(9deg) rotateY(-13deg) rotateZ(-2deg) scale(.88);
+  filter: drop-shadow(0 32px 30px #0009);
+}
+.app[data-stage="poster"] .piano-lid .lid-cover {
+  height: 82px !important;
+  min-height: 82px;
+}
+.app[data-stage="poster"] .piano-lid .lid-emblem { top: 22px; }
+.app[data-stage="poster"] .piano-housing {
+  box-shadow: 0 20px 38px #000b, inset 0 1px #d9cba433;
+}
+.app[data-stage="poster"] .stage-prompt {
+  position: fixed;
+  z-index: 20;
+  inset: auto 0 max(24px, calc(var(--safe-bottom) + 18px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: none;
+}
+.app[data-stage="poster"] .stage-prompt button {
+  min-width: 176px;
+  min-height: 58px;
+  border-radius: 999px;
+  letter-spacing: .08em;
+  box-shadow: 0 10px 36px #000b, inset 0 1px #fff2;
+}
+.app[data-stage="poster"] .stage-prompt span { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .app .studio { transition: none; }
+}
+
+/* Keep the lid's recording flow readable from top to bottom. */
+.lid-tray .recording-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 16px;
+  border: 1px solid #393d35;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #1b1f1a, #111411);
+}
+.recording-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.recording-heading strong { color: #e2d3ad; font-size: 14px; }
+.recording-heading small,
+.recording-footnote { color: #87907e; font-size: 10px; line-height: 1.6; }
+.recording-controls .recording-start,
+.recording-controls .recording-play {
+  min-height: 44px;
+}
+.recording-controls .recording-start {
+  border-color: #a28070;
+  color: #f0c5b5;
+}
+.recording-controls .recording-start.enabled {
+  background: #5d2925;
+  border-color: #b75f55;
+  color: #fff2ed;
+}
+.recording-status {
+  color: #c9c4b2;
+  font-size: 11px;
+  min-height: 18px;
+}
+.recording-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.recording-actions button { min-height: 42px; }
+.recording-actions .recording-play:not(:disabled) {
+  background: #c5b27f;
+  border-color: #c5b27f;
+  color: #171812;
+}
+.recording-controls button:disabled { opacity: .42; }
+.recording-footnote { margin: 0 !important; }
+
+/* Make the controls under the keys read as one tidy instrument toolbar. */
+.keyboard-tools {
+  box-sizing: border-box;
+  min-width: 0;
+  gap: 12px;
+  border-top: 1px solid #2b3028;
+}
+.keyboard-tools > div:first-child { min-width: 0; flex: 1 1 auto; }
+.keyboard-tools > div:last-child { min-width: 0; flex: 0 1 auto; }
+.keyboard-tools .range-scroll { width: clamp(80px, 10vw, 150px); }
+.app[data-lid="open"] .keyboard-tools {
+  max-height: none !important;
+  height: auto;
+  min-height: 46px;
+  overflow: visible !important;
+}
+.keyboard-zoom-control { display: none; }
+@media (max-width: 767px) {
+  .keyboard-tools { min-height: 48px; padding-inline: 10px; }
+  .keyboard-tools > div:first-child { display: none; }
+  .keyboard-tools > div:last-child { width: 100%; justify-content: space-between; }
+  .keyboard-tools .range-scroll { width: clamp(64px, 22vw, 110px); }
+  .lid-tray .recording-controls { padding: 13px; }
+}
+
+/* Let touch users choose a comfortable key count in landscape play. */
+@media (orientation: landscape) and (max-height: 500px) and (hover: none) and (pointer: coarse) {
+  .app[data-lid="open"] .piano-housing > .keyboard-zoom-control {
+    display: flex;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 34px;
+    color: #d2c18e;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .app[data-lid="open"] .piano-housing > .keyboard-scroll { min-height: 0; }
+  .app[data-lid="open"] .keyboard-zoom-control .stage-slider {
+    flex: 0 1 clamp(150px, 30vw, 260px);
+    width: clamp(150px, 30vw, 260px);
+    min-width: 130px;
+    height: 32px;
+    touch-action: none;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .keyboard-zoom-control {
+    display: flex;
+    flex: 0 0 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 34px;
+    color: #d2c18e;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .app[data-rotate="true"][data-lid="open"] .piano-housing > .keyboard-scroll { min-height: 0; }
+  .app[data-rotate="true"][data-lid="open"] .keyboard-zoom-control .stage-slider {
+    flex: 0 1 clamp(150px, 30vh, 260px);
+    width: clamp(150px, 30vh, 260px);
+    min-width: 130px;
+    height: 32px;
+    touch-action: none;
+  }
+}
+
+
+/* Button, feedback, and closed-lid playback corrections. */
+.stage-slider { outline: none; }
+.stage-slider:focus { outline: none; }
+.stage-slider:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+.stage-segmented button[aria-pressed="true"],
+.stand-mode-controls button.selected,
+.mode-switch button.selected {
+  border-color: #e2ca8b;
+  background: linear-gradient(145deg, #d1bc82, #9e8753);
+  color: #171812;
+  font-weight: 700;
+  box-shadow: inset 0 1px #fff5, 0 2px 8px #0005;
+}
+.stage-stepper output {
+  color: #e4dfce;
+  font-size: 12px;
+  font-weight: 600;
+}
+.playback-settings .playback-volume {
+  flex: 0 0 120px;
+  width: 120px;
+  min-width: 120px;
+}
+.player.more-controls-open .playback-settings > label:not(:first-child) {
+  display: flex !important;
+}
+.app[data-lid="open"] .player.more-controls-open .playback-settings > label:not(:first-child) {
+  display: flex !important;
+}
+.roll-tools > label {
+  flex: 0 0 auto;
+  gap: 7px;
+}
+.roll-tools > label > .stage-slider {
+  flex: 0 0 74px;
+  width: 74px;
+  min-width: 74px;
+}
+.notation-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.notation-actions button { min-height: 40px; border: 1px solid #81744f; color: #e1d2aa; }
+.lid-hint {
+  position: relative;
+  top: auto !important;
+  left: auto;
+  margin: 6px auto;
+  transform: none;
+  z-index: 2;
+  pointer-events: auto;
+}
+.app[data-lid="open"] .lid-hint { display: none !important; }
+.app[data-lid="closed"] .studio > .piano-housing::after { display: none !important; }
+.closed-playback-slot { display: none; }
+.player-mini .playback-heading,
+.player-mini .playback-heading > strong { display: none; }
+.player-mini .timeline { grid-column: 1; }
+.player-mini .transport { grid-column: 2; grid-row: 1 / span 2; }
+
+/* Avoid cross-axis native scrollbars in the score and keyboard viewports. */
+.keyboard-scroll {
+  overflow-x: auto;
+  overflow-y: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: #5f6055 #171916;
+}
+.lid-tray [role="tabpanel"] {
+  min-width: 0;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: #5f6055 #171916;
+}
+.keyboard-scroll::-webkit-scrollbar,
+.lid-tray [role="tabpanel"]::-webkit-scrollbar { width: 7px; height: 7px; }
+.keyboard-scroll::-webkit-scrollbar-thumb,
+.lid-tray [role="tabpanel"]::-webkit-scrollbar-thumb { background: #5f6055; border-radius: 8px; }
+.keyboard-scroll::-webkit-scrollbar-track,
+.lid-tray [role="tabpanel"]::-webkit-scrollbar-track { background: #171916; }
+
+.stage-slider-marker {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  width: 10px;
+  height: 18px;
+  border: 2px solid #11140f;
+  border-radius: 3px;
+  background: #ead9a6;
+  box-shadow: 0 0 0 1px #ead9a699, 0 1px 4px #0009;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  cursor: ew-resize;
+}
+.stage-slider-marker-b { background: #85b5a7; box-shadow: 0 0 0 1px #85b5a799, 0 1px 4px #0009; }
+.stage-slider-marker:focus { outline: none; }
+.stage-slider-marker:focus-visible { outline: 1px solid var(--gold); outline-offset: 3px; }
+
+@media (min-width: 768px) {
+  .closed-playback-slot:has(.player[data-visible="true"]) { display: block; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini {
+    position: relative;
+    inset: auto;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    z-index: auto;
+    display: grid !important;
+    grid-template-columns: 40px minmax(100px, .8fr) minmax(120px, 1fr) 44px;
+    grid-template-rows: 48px;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
+    margin: 0;
+    padding: 0 8px;
+    overflow: hidden;
+    border-radius: 6px;
+    backdrop-filter: none;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .playback-heading { display: contents !important; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .playback-heading > strong {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .player-more-toggle { display: none !important; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini > .timeline { grid-column: 3; grid-row: 1; min-width: 0; min-height: 32px; gap: 5px; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .transport-row,
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .transport { display: contents; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .transport .play {
+    grid-column: 1; grid-row: 1; width: 40px; min-width: 40px; height: 40px; min-height: 40px; margin: 0;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .timeline > span { font-size: 10px; }
+}
+
+@media (max-width: 767px) {
+  .sound-tab-settings .sound-volume-control .stage-slider { min-width: 120px; }
+  .closed-playback-slot:has(.player[data-visible="true"]) { display: block; grid-area: player; }
+  .app[data-lid="closed"][data-stage="playing"] .studio {
+    grid-template-areas: "layout" "player" "piano" "tools" "chords" "accompaniment";
+    grid-template-rows: 44px auto minmax(0, 1fr) auto auto auto;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini {
+    position: relative;
+    inset: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    transform: none;
+    z-index: auto;
+    display: grid !important;
+    grid-template-columns: 40px minmax(70px, .8fr) minmax(80px, 1fr) 40px;
+    grid-template-rows: 48px;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    height: 48px;
+    min-height: 48px;
+    max-height: 48px;
+    margin: 0;
+    padding: 0 5px;
+    overflow: hidden;
+    border-radius: 6px;
+    backdrop-filter: none;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .playback-heading { display: contents !important; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .playback-heading > strong {
+    display: block; grid-column: 2; grid-row: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .player-more-toggle { display: none !important; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini > .timeline { grid-column: 3; grid-row: 1; min-width: 0; min-height: 32px; gap: 3px; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .transport-row,
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .transport { display: contents; }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .transport .play {
+    grid-column: 1; grid-row: 1; width: 40px; min-width: 40px; height: 40px; min-height: 40px; margin: 0;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot .player-mini .timeline > span { font-size: 8px; }
+  .mode-row > .mode-notice { display: block; flex: 1 0 100%; text-align: center; color: #f0d995; }
+  .lid-hint { max-width: calc(100vw - 32px); font-size: 12px; }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .app[data-lid="closed"][data-stage="playing"] .studio {
+    grid-template-areas: "layout" "player" "piano" "tools";
+    grid-template-rows: 44px auto minmax(0, 1fr) auto;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot { grid-area: player; min-width: 0; }
+  .app[data-lid="closed"][data-stage="playing"] .studio:has(.lid-hint),
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .studio:has(.lid-hint) {
+    grid-template-areas: "layout" "hint" "player" "piano" "tools";
+    grid-template-rows: 44px auto auto minmax(0, 1fr) auto;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .lid-hint,
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .lid-hint {
+    grid-area: hint;
+    align-self: center;
+    margin: 2px auto;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot,
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .closed-playback-slot {
+    grid-area: player;
+    min-width: 0;
+  }
+  .app[data-lid="closed"][data-stage="playing"] .piano-housing,
+  .app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .piano-housing { grid-area: piano; min-height: 110px; height: 100%; }
+}
+.app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .studio {
+  grid-template-areas: "layout" "player" "piano" "tools";
+  grid-template-rows: 44px auto minmax(0, 1fr) auto;
+}
+.app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .closed-playback-slot { grid-area: player; min-width: 0; }
+
+/* The outer slot is reserved for the closed-lid mini player. The lid tray
+   owns the full player whenever the lid is open. */
+.app[data-lid="open"] .closed-playback-slot { display: none !important; }
+.app[data-lid="closed"][data-stage="playing"] .closed-playback-slot:has(.player.player-mini[data-visible="true"]) {
+  display: block !important;
+}
+@media (max-width: 767px) {
+  .app[data-lid="closed"][data-stage="playing"] .closed-playback-slot:has(.player.player-mini[data-visible="true"]) {
+    grid-area: player;
+  }
+}
+
+/* Keep open-lid white keys inside the height allocated to the keyboard. */
+.app[data-lid="open"] .piano-housing .keys .piano-key.white {
+  height: calc(100% - 8px) !important;
+}
+.app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .studio:has(.lid-hint) {
+  grid-template-areas: "layout" "hint" "player" "piano" "tools";
+  grid-template-rows: 44px auto auto minmax(0, 1fr) auto;
+}
+.app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .lid-hint { grid-area: hint; align-self: center; margin: 2px auto; }
+.app[data-rotate="true"][data-lid="closed"][data-stage="playing"] .closed-playback-slot { grid-area: player; min-width: 0; }
+
+@media (max-height: 500px) {
+  .app[data-lid="open"] .piano-lid .lid-tray [role="tabpanel"]:not([hidden]),
+  .app[data-rotate="true"][data-lid="open"] .piano-lid .lid-tray [role="tabpanel"]:not([hidden]) {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Keep the poster action on the piano lid, clear of every key. */
+.app[data-stage="poster"] .stage-prompt {
+  position: absolute;
+  z-index: 12;
+  top: 8px;
+  right: 0;
+  bottom: auto;
+  left: 0;
+  transform: none;
+  pointer-events: none;
+  flex-direction: column;
+  gap: 0;
+}
+.app[data-stage="poster"] .stage-prompt span {
+  display: block !important;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #f1ead8;
+  font-size: 10px;
+  line-height: 14px;
+}
+.app[data-stage="poster"] .stage-prompt button { pointer-events: auto; min-height: 44px; padding: 8px 20px; font-size: 15px; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .app[data-stage="poster"] .stage-prompt span { display: none !important; }
+  .app[data-stage="poster"] .stage-prompt button { min-height: 40px; padding: 6px 18px; font-size: 14px; }
+}
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open {
+  grid-template-rows: 38px 26px auto auto;
+}
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open .loop-fields {
+  display: flex !important;
+  grid-column: 1 / -1;
+  grid-row: 4;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+}
+

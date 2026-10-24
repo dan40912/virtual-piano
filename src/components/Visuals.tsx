@@ -35,13 +35,14 @@ export function Roll({
   useEffect(() => {
     const canvas = ref.current!;
     const draw = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * devicePixelRatio;
-      canvas.height = rect.height * devicePixelRatio;
+      const width = canvas.offsetWidth;
+      const height = canvas.offsetHeight;
+      canvas.width = width * devicePixelRatio;
+      canvas.height = height * devicePixelRatio;
       const ctx = canvas.getContext("2d")!;
       ctx.scale(devicePixelRatio, devicePixelRatio);
-      const w = rect.width,
-        h = rect.height;
+      const w = width,
+        h = height;
       const start = count === 88 ? 21 : 36;
       const whites = Array.from({ length: count }, (_, i) => start + i).filter(
         (n) => !isBlack(n),
@@ -248,10 +249,14 @@ export function Sheet({ song }: { song: Song }) {
     }
     const container = ref.current;
     if (container) {
-      const y =
-        cursor.cursorElement.getBoundingClientRect().top -
-        container.getBoundingClientRect().top +
-        container.scrollTop;
+      let y = 0;
+      let node = cursor.cursorElement as HTMLElement | null;
+      while (node && node !== container) {
+        y += node.offsetTop;
+        node = node.offsetParent as HTMLElement | null;
+      }
+      if (node !== container) y -= container.offsetTop;
+      y += container.scrollTop;
       if (
         y < container.scrollTop ||
         y > container.scrollTop + container.clientHeight - 45

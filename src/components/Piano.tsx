@@ -22,6 +22,8 @@ export const Piano = memo(function Piano({
   onScroll,
   scrollPosition,
   onBounds,
+  visibleWhiteKeys = 18,
+  rotate = false,
 }: {
   count: number;
   mapping: Record<string, number>;
@@ -35,12 +37,15 @@ export const Piano = memo(function Piano({
   onScroll: (x: number) => void;
   scrollPosition: number;
   onBounds: (max: number) => void;
+  visibleWhiteKeys?: number;
+  rotate?: boolean;
 }) {
   const start = count === 88 ? 21 : 36;
   const nums = Array.from({ length: count }, (_, i) => start + i);
   const whites = nums.filter((n) => !isBlack(n));
   const pointers = useRef(new Map<number, number>());
   const ref = useRef<HTMLDivElement>(null);
+  const centeredRef = useRef(false);
   const [whiteKeyWidth, setWhiteKeyWidth] = useState(29);
   const bindingByMidi = useMemo(() => {
     const reverse = new Map<number, string>();
@@ -65,38 +70,64 @@ export const Piano = memo(function Piano({
   };
   useEffect(() => {
     const root = ref.current!;
+    const centerMiddleC = () => {
+      const key = root.querySelector<HTMLElement>('[data-midi="60"]');
+      if (!key || root.clientWidth <= 0 || root.scrollWidth <= root.clientWidth)
+        return;
+      const max = root.scrollWidth - root.clientWidth;
+      const target = Math.max(
+        0,
+        Math.min(
+          max,
+          key.offsetLeft + key.offsetWidth / 2 - root.clientWidth / 2,
+        ),
+      );
+      centeredRef.current = true;
+      root.scrollLeft = target;
+      onScroll(target);
+    };
     const update = () => {
       onBounds(Math.max(0, root.scrollWidth - root.clientWidth));
-      onScroll(root.scrollLeft);
+      const mobileLandscape = window.matchMedia(
+        "(orientation: landscape) and (max-height: 500px)",
+      ).matches || rotate;
       const compactLayout = window.matchMedia(
         "(max-width: 767px), (orientation: landscape) and (max-height: 500px)",
       ).matches;
-      const nextWidth = compactLayout
-        ? Math.max(32, Math.min(84, window.innerWidth / 11))
+      const logicalWidth = root.clientWidth;
+      const nextWidth = mobileLandscape
+        ? logicalWidth > 0
+          ? Math.max(14, logicalWidth / visibleWhiteKeys)
+          : 29
+        : compactLayout
+        ? logicalWidth > 0
+          ? Math.max(32, Math.min(84, logicalWidth / 11))
+          : 29
         : 29;
       setWhiteKeyWidth((current) =>
         Math.abs(current - nextWidth) < 0.5 ? current : nextWidth,
       );
+      centerMiddleC();
     };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(root);
-    return () => observer.disconnect();
-  }, [count, onBounds, onScroll]);
+    const keys = root.firstElementChild;
+    if (keys) observer.observe(keys);
+    window.addEventListener("resize", centerMiddleC);
+    window.addEventListener("orientationchange", centerMiddleC);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", centerMiddleC);
+      window.removeEventListener("orientationchange", centerMiddleC);
+    };
+  }, [count, onBounds, onScroll, whiteKeyWidth, visibleWhiteKeys, rotate]);
   useEffect(() => {
-    if (ref.current) {
+    if (ref.current && centeredRef.current) {
       ref.current.scrollLeft = scrollPosition;
       onScroll(ref.current.scrollLeft);
     }
   }, [scrollPosition, onScroll]);
-  useEffect(() => {
-    const root = ref.current;
-    const key = root?.querySelector<HTMLElement>('[data-midi="60"]');
-    if (root && key) {
-      root.scrollLeft = key.offsetLeft - root.clientWidth / 2;
-      onScroll(root.scrollLeft);
-    }
-  }, [count, onScroll]);
   return (
     <div
       className="keyboard-scroll"
