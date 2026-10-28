@@ -11,6 +11,10 @@ export function PianoLid({
   rotate = false,
   focusView = false,
   player,
+  scoreVisible = true,
+  onScoreToggle,
+  playbackVisible = true,
+  onPlaybackToggle,
   onToggle,
   tabs,
   activeTab,
@@ -24,6 +28,10 @@ export function PianoLid({
   rotate?: boolean;
   focusView?: boolean;
   player?: ReactNode;
+  scoreVisible?: boolean;
+  onScoreToggle?: () => void;
+  playbackVisible?: boolean;
+  onPlaybackToggle?: () => void;
   onToggle: () => void;
   tabs: LidTab[];
   activeTab: string;
@@ -374,9 +382,17 @@ export function PianoLid({
         <div className="lid-tray-inner" ref={inner}>
           <div className="mobile-track-sheet-heading">
             <strong>曲目與工具</strong>
-            <button type="button" onClick={onToggle} aria-label="關閉曲目面板">
-              <X size={18} />
-            </button>
+            <div className="mobile-track-sheet-actions">
+              <button type="button" className="mobile-score-sheet-toggle" onClick={onScoreToggle} aria-pressed={scoreVisible}>
+                {scoreVisible ? "隱藏曲譜" : "顯示曲譜"}
+              </button>
+              <button type="button" className="mobile-playback-sheet-toggle" onClick={onPlaybackToggle} aria-pressed={playbackVisible}>
+                {playbackVisible ? "隱藏播放" : "顯示播放"}
+              </button>
+              <button type="button" onClick={onToggle} aria-label="關閉曲目面板">
+                <X size={18} />
+              </button>
+            </div>
           </div>
           <div className="lid-tabs" role="tablist" aria-label="琴蓋功能分類">
             {tabs.map((tab, i) => (

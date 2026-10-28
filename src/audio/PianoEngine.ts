@@ -61,6 +61,26 @@ export class PianoEngine {
   now() {
     return Tone.now();
   }
+  /** Tap the existing instrument output without replacing its speaker path. */
+  async createRecordingStream() {
+    await this.ready();
+    const context = Tone.getContext().rawContext as AudioContext;
+    if (typeof context.createMediaStreamDestination !== "function" || !this.gain)
+      throw Error("這個瀏覽器不支援音訊錄製，仍可錄製與匯出 MIDI。");
+    const gain = this.gain;
+    const destination = context.createMediaStreamDestination();
+    gain.connect(destination);
+    let disposed = false;
+    return {
+      stream: destination.stream,
+      dispose: () => {
+        if (disposed) return;
+        disposed = true;
+        try { gain.disconnect(destination); }
+        finally { destination.stream.getTracks().forEach((track) => track.stop()); }
+      },
+    };
+  }
   audioLatency() {
     const context = Tone.getContext().rawContext as AudioContext & {
       outputLatency?: number;

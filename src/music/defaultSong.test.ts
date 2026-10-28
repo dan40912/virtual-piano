@@ -19,7 +19,7 @@ it("uses the supplied default MIDI with exact source notes, timing, tempo and me
   expect(defaultSong.timeSignature).toEqual([3, 4]);
   expect(defaultSong.tempo).toBeCloseTo(110);
   expect(defaultSong.duration).toBeCloseTo(38.77, 2);
-  expect(defaultSong.title).toContain("e0637_i");
+  expect(defaultSong.title).toBe("預設練習曲");
   expect(defaultSong.title).not.toContain("Stage");
   expect(defaultSong.tracks).toEqual(song.tracks);
 });

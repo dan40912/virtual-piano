@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-25",
+  "note": "Initial layout audit before mobile-workspace fixes. CSS viewport dimensions verified; no hardware touch simulation.",
+  "results": [
+    {
+      "clientW": 320,
+      "h": 844,
+      "keyBottom": 554,
+      "keyHeight": 388,
+      "keyTop": 166,
+      "lid": "open",
+      "scrollW": 320,
+      "w": 320
+    },
+    {
+      "clientW": 375,
+      "h": 812,
+      "keyBottom": 554,
+      "keyHeight": 388,
+      "keyTop": 166,
+      "lid": "open",
+      "scrollW": 375,
+      "w": 375
+    },
+    {
+      "clientW": 390,
+      "h": 844,
+      "keyBottom": 554,
+      "keyHeight": 388,
+      "keyTop": 166,
+      "lid": "open",
+      "scrollW": 390,
+      "w": 390
+    },
+    {
+      "clientW": 430,
+      "h": 932,
+      "keyBottom": 554,
+      "keyHeight": 388,
+      "keyTop": 166,
+      "lid": "open",
+      "scrollW": 430,
+      "w": 430
+    },
+    {
+      "clientW": 667,
+      "h": 375,
+      "keyBottom": 160,
+      "keyHeight": 75,
+      "keyTop": 85,
+      "lid": "open",
+      "scrollW": 667,
+      "w": 667
+    },
+    {
+      "clientW": 844,
+      "h": 390,
+      "keyBottom": 160,
+      "keyHeight": 75,
+      "keyTop": 85,
+      "lid": "open",
+      "scrollW": 844,
+      "w": 844
+    },
+    {
+      "clientW": 932,
+      "h": 430,
+      "keyBottom": 160,
+      "keyHeight": 75,
+      "keyTop": 85,
+      "lid": "open",
+      "scrollW": 932,
+      "w": 932
+    },
+    {
+      "clientW": 756,
+      "h": 1024,
+      "keyBottom": 1220,
+      "keyHeight": 198,
+      "keyTop": 1022,
+      "lid": "open",
+      "scrollW": 756,
+      "w": 768
+    },
+    {
+      "clientW": 808,
+      "h": 1180,
+      "keyBottom": 1220,
+      "keyHeight": 198,
+      "keyTop": 1022,
+      "lid": "open",
+      "scrollW": 808,
+      "w": 820
+    },
+    {
+      "clientW": 1012,
+      "h": 768,
+      "keyBottom": 794,
+      "keyHeight": 154,
+      "keyTop": 640,
+      "lid": "open",
+      "scrollW": 1012,
+      "w": 1024
+    },
+    {
+      "clientW": 1168,
+      "h": 820,
+      "keyBottom": 803,
+      "keyHeight": 164,
+      "keyTop": 640,
+      "lid": "open",
+      "scrollW": 1168,
+      "w": 1180
+    },
+    {
+      "clientW": 1354,
+      "h": 1024,
+      "keyBottom": 824,
+      "keyHeight": 184,
+      "keyTop": 640,
+      "lid": "open",
+      "scrollW": 1354,
+      "w": 1366
+    },
+    {
+      "clientW": 1428,
+      "h": 900,
+      "keyBottom": 819,
+      "keyHeight": 179,
+      "keyTop": 640,
+      "lid": "open",
+      "scrollW": 1428,
+      "w": 1440
+    }
+  ]
+}

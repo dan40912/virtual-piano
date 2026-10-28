@@ -5,7 +5,7 @@ const midi = new Midi(
   fs.readFileSync(new URL("../public/music/e0637_i.mid", import.meta.url)),
 );
 const song = {
-  title: "預設練習曲 · e0637_i",
+  title: "預設練習曲",
   source: "使用者指定 · e0637_i.mid",
   tempo: midi.header.tempos[0]?.bpm || 120,
   timeSignature: midi.header.timeSignatures[0]?.timeSignature || [4, 4],

@@ -1,5 +1,6 @@
 import { useSettings } from "../store";
 import { voiceStyles, type PianoStyle } from "../audio/styles";
+import { VisualPreferences } from "./VisualPreferences";
 export function InstrumentControls({ onPreview }: { onPreview: () => void }) {
   const s = useSettings();
   return (
@@ -31,14 +32,13 @@ export function InstrumentControls({ onPreview }: { onPreview: () => void }) {
           </button>
         ))}
       </div>
-      <p>
-        預設快捷鍵對應 C4–B4，不需要 Shift；用 Page Up / Down 或八度按鈕移動音域。
-        和弦功能可在琴蓋的「和弦」分頁設定。
-        風格會即時改變濾波、起音、尾音、力度與殘響，手動演奏和 MIDI 都適用。
-      </p>
-      <p className="voice-source">
-        音源：同一組真實鋼琴取樣，搭配不同聲音處理；沒有使用或宣稱特定品牌鋼琴。
-      </p>
+      <p>風格即時套用於手動演奏與 MIDI。</p>
+      <VisualPreferences />
+      <details className="visual-preferences">
+        <summary>音色與快捷鍵說明</summary>
+        <p>預設中央 16 個半音不需要 Shift；Page Up / Down 可移動八度。一鍵和弦請到「和弦」分頁設定。</p>
+        <p className="voice-source">音源：同一組 Salamander 真實鋼琴取樣，以濾波、力度、起音、尾音與殘響呈現不同風格。</p>
+      </details>
     </section>
   );
 }

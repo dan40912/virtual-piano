@@ -1,7 +1,6 @@
 import { PianoLid } from "./components/PianoLid";
-import { defaultSong } from "./music/defaultSong";
+import { RecordingIndicator } from "./components/RecordingIndicator";
 import { recorder } from "./audio/LiveRecorder";
-import { InstrumentControls } from "./components/InstrumentControls";
 import {
   shortcutLabel,
   keyboardBinding,
@@ -20,17 +19,37 @@ import {
 } from "react";
 import { ChordPanel } from "./components/ChordPanel";
 import { Piano } from "./components/Piano";
-import { Roll, Sheet } from "./components/Visuals";
+import { Roll } from "./components/Visuals";
+import { PersistentSheetHost } from "./components/PersistentSheetHost";
 import { engine } from "./audio/PianoEngine";
 import { player } from "./audio/PlaybackScheduler";
 import { useSettings } from "./store";
 import { useStageOrientation } from "./hooks/useStageOrientation";
 import { useFocusView } from "./hooks/useFocusView";
+import { useKeyboardOnly } from "./hooks/useKeyboardOnly";
+import { useDeferredMount } from "./hooks/useDeferredMount";
+import { useVisualPreferences } from "./hooks/useVisualPreferences";
 import { useLidHint } from "./hooks/useLidHint";
+import { shouldIgnorePianoShortcut } from "./music/shortcutTarget";
+import { readLastSong, rememberPosition, rememberSong } from "./library/songLibrary";
 import { toStage } from "./stage/toStage";
 import { mobileToolHeight } from "./stage/mobileToolHeight";
 import { StageSlider } from "./components/StageSlider";
 import { StageSegmented, StageStepper } from "./components/StageControls";
+import {
+  decodePracticeShare,
+  describePracticeShare,
+  advanceWaitStep,
+  encodePracticeShare,
+  normalizeLoopRange,
+  readSongPreferences,
+  selectLoopNotes,
+  songPreferenceId,
+  writeSongPreferences,
+  type SongPracticePreferences,
+} from "./practice/songPreferences";
+import { isAutomaticNote, type AutoPolicy } from "./practice/handSplit";
+import { applyIfCurrent, createCoalescedLoader } from "./music/defaultSongLoader";
 import {
   demo,
   defaultMap,
@@ -42,7 +61,6 @@ import {
 import {
   importHymnal,
   parseMidi,
-  parseXml,
   validateHymnal,
 } from "./music/importers";
 import {
@@ -51,7 +69,6 @@ import {
   Sun,
   Maximize2,
   Upload,
-  Link2,
   Play,
   Pause,
   Square,
@@ -61,7 +78,6 @@ import {
   Music2,
   Headphones,
   X,
-  Download,
   Minimize2,
 } from "lucide-react";
 const GITHUB_URL = "https://github.com/dan40912/virtual-piano";
@@ -74,6 +90,15 @@ const LazyScorePaper = lazy(async () => ({
 }));
 const LazyRecordingControls = lazy(async () => ({
   default: (await import("./components/RecordingControls")).RecordingControls,
+}));
+const LazyKeyboardMappingPanel = lazy(async () => ({
+  default: (await import("./components/KeyboardMappingPanel")).KeyboardMappingPanel,
+}));
+const LazySoundTools = lazy(async () => ({
+  default: (await import("./components/SoundTools")).SoundTools,
+}));
+const LazySongImportTools = lazy(async () => ({
+  default: (await import("./components/SongImportTools")).SongImportTools,
 }));
 
 function PlaybackProgress({
@@ -123,22 +148,27 @@ function PlaybackProgress({
 
 export default function App() {
   const settings = useSettings();
+  useVisualPreferences();
   const lidHint = useLidHint();
   const appRef = useRef<HTMLDivElement>(null);
-  const urlInputRef = useRef<HTMLInputElement>(null);
   const isIOS =
     /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const [lidOpen, setLidOpen] = useState(false);
-  const [mobilePianoExpanded, setMobilePianoExpanded] = useState(() =>
-    typeof window !== "undefined" &&
-    window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches,
-  );
+  const mobilePianoExpanded =
+    settings.mobileStageLayout === "performance" ||
+    (settings.mobileStageLayout === "auto" &&
+      window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches);
+  const mobileScoreShown = lidOpen && settings.mobileScoreVisible && !mobilePianoExpanded;
   const [stage, setStage] = useState<"poster" | "playing">("poster");
   const [isRecording, setIsRecording] = useState(false);
   const [urlInputActive, setUrlInputActive] = useState(false);
-  const { rotate, fullscreen, requestLandscape, releaseOrientationLock } =
-    useStageOrientation(stage, urlInputActive);
+  const keyboardOnly = useKeyboardOnly();
+  const { rotate, fullscreen } = useStageOrientation(
+    stage,
+    urlInputActive || keyboardOnly.active,
+    settings.mobileOrientation,
+  );
   const stageRef = useRef<HTMLDivElement>(null);
   const stageHeight = rotate ? window.innerWidth : window.innerHeight;
   const focusCompact = rotate || window.matchMedia("(orientation: landscape) and (max-height: 500px)").matches;
@@ -146,9 +176,10 @@ export default function App() {
     110,
     Math.min(250, stageHeight * (focusCompact ? 0.42 : window.innerWidth < 768 ? 0.32 : 0.25)),
   );
-  const rotateHintSeen = useRef(false);
-  const [rotateHintVisible, setRotateHintVisible] = useState(false);
   const [lidTab, setLidTab] = useState("stand");
+  const songImportRequested = lidOpen && lidTab === "stand";
+  const songImportMounted = useDeferredMount(songImportRequested);
+  const soundToolsRequested = useDeferredMount(lidTab === "sound");
   const [moreControlsOpen, setMoreControlsOpen] = useState(false);
   const [modeNotice, setModeNotice] = useState("");
   const [immersive, setImmersive] = useState(false);
@@ -165,40 +196,69 @@ export default function App() {
     useSettings.getState().set({ theme: "dark" });
   }, []);
   useEffect(() => {
+    if (!lastSong.current) return;
+    player.setPosition(lastSong.current.position);
+    setViewPosition(lastSong.current.position);
+  }, []);
+  useEffect(() => {
     document.documentElement.dataset.rotate = rotate ? "true" : "false";
     return () => {
       delete document.documentElement.dataset.rotate;
     };
   }, [rotate]);
   useEffect(() => {
-    if (!rotate || rotateHintSeen.current) return;
-    rotateHintSeen.current = true;
-    setRotateHintVisible(true);
-    const timer = window.setTimeout(() => setRotateHintVisible(false), 4000);
-    return () => window.clearTimeout(timer);
-  }, [rotate]);
-  useEffect(() => {
     if (!modeNotice) return;
     const timer = window.setTimeout(() => setModeNotice(""), 4000);
     return () => window.clearTimeout(timer);
   }, [modeNotice]);
-  const [song, setSong] = useState<Song | null>(defaultSong);
-  const position = player.position;
+  const lastSong = useRef<ReturnType<typeof readLastSong> | undefined>(undefined);
+  if (lastSong.current === undefined) lastSong.current = readLastSong();
+  const songRef = useRef<Song | null>(lastSong.current?.song || null);
+  const [song, setSong] = useState<Song | null>(songRef.current);
+  songRef.current = song;
+  const songChoiceVersion = useRef(0);
+  const defaultSongLoader = useRef<(() => Promise<Song>) | null>(null);
+  if (!defaultSongLoader.current) {
+    defaultSongLoader.current = createCoalescedLoader(async () =>
+      (await import("./music/defaultSong")).defaultSong,
+    );
+  }
+  const explicitDefaultLoad = useRef<{ promise: Promise<void>; version: number } | null>(null);
+  const [defaultSongLoading, setDefaultSongLoading] = useState(false);
+  const originalComparison = useRef<{
+    song: Song;
+    preferences: SongPracticePreferences;
+    mode: string;
+    practiceType: string;
+    position: number;
+  } | null>(null);
+  const restoredPreferenceId = useRef("");
+  const skipPreferenceWrite = useRef(false);
+  const [shareNotice, setShareNotice] = useState("");
   const [playing, setPlaying] = useState(false);
+  const [viewPosition, setViewPosition] = useState(lastSong.current?.position || 0);
   const [speed, setSpeed] = useState(1),
     [transpose, setTranspose] = useState(0),
     [mode, setMode] = useState("auto"),
     [practiceType, setPracticeType] = useState("rhythm"),
     [tolerance, setTolerance] = useState(0.2);
+  const feedbackTracking = playing && mode === "practice" && practiceType === "rhythm";
+  const position = feedbackTracking ? viewPosition : player.position;
+  useEffect(() => {
+    if (!feedbackTracking) return;
+    const timer = window.setInterval(() => setViewPosition(player.position), 100);
+    return () => window.clearInterval(timer);
+  }, [feedbackTracking]);
   const [muted, setMuted] = useState<number[]>([]),
     [autoPolicy, setAutoPolicy] = useState<
-      Record<number, "all" | "bass" | "manual">
+      Record<number, AutoPolicy>
     >({
       0: "bass",
     }),
+    [splitPitch, setSplitPitch] = useState(60),
     [loop, setLoop] = useState(false),
     [loopA, setLoopA] = useState(0),
-    [loopB, setLoopB] = useState(defaultSong.duration),
+    [loopB, setLoopB] = useState(lastSong.current?.song.duration || 0),
     [metro, setMetro] = useState(false);
   const [active, setActive] = useState(new Set<number>()),
     [pedal, setPedal] = useState(false),
@@ -213,6 +273,7 @@ export default function App() {
   const [panel, setPanel] = useState(""),
     [selected, setSelected] = useState<number | null>(null),
     [pendingBinding, setPendingBinding] = useState<string | null>(null),
+    [bindingConflict, setBindingConflict] = useState<{ code: string; midi: number; occupied: number } | null>(null),
     [warning, setWarning] = useState(""),
     [view, setView] = useState("roll"),
     [zoom, setZoom] = useState(65),
@@ -243,6 +304,11 @@ export default function App() {
   const pressed = useRef(new Map<string, number>()),
     hit = useRef(new Set<string>()),
     waitHeld = useRef(new Set<number>());
+  useEffect(() => {
+    if (mode !== "practice" || practiceType !== "wait") return;
+    waitHeld.current.clear();
+    setStep(0);
+  }, [mode, practiceType, song, muted, transpose, loop, loopA, loopB]);
   const file = useRef<HTMLInputElement>(null),
     jsonFile = useRef<HTMLInputElement>(null);
   const groupList = useMemo(
@@ -258,14 +324,77 @@ export default function App() {
         : [],
     [song, muted, transpose],
   );
+  const waitGroups = useMemo(
+    () => selectLoopNotes(groupList, loop, loopA, loopB),
+    [groupList, loop, loopA, loopB],
+  );
+  const [loopSelectionArmed, setLoopSelectionArmed] = useState(false);
+  const currentPreferences = (): SongPracticePreferences => ({
+    speed,
+    transpose,
+    loop,
+    loopA,
+    loopB,
+    muted,
+    autoPolicy,
+    splitPitch,
+  });
+  const applyPreferences = (preferences: SongPracticePreferences) => {
+    setSpeed(preferences.speed);
+    setTranspose(preferences.transpose);
+    setLoop(preferences.loop);
+    setLoopA(preferences.loopA);
+    setLoopB(preferences.loopB);
+    setMuted(preferences.muted);
+    setAutoPolicy(preferences.autoPolicy);
+    setSplitPitch(preferences.splitPitch);
+  };
+  useEffect(() => {
+    if (!song) {
+      restoredPreferenceId.current = "";
+      return;
+    }
+    const id = songPreferenceId(song);
+    if (restoredPreferenceId.current === id) return;
+    const shareValue = new URLSearchParams(window.location.search).get("practice");
+    const shared = shareValue ? decodePracticeShare(shareValue, song) : null;
+    const preferences = shared || readSongPreferences(song);
+    if (preferences) {
+      skipPreferenceWrite.current = true;
+      applyPreferences(preferences);
+    }
+    if (shared && shareValue) {
+      setShareNotice("已驗證並套用分享的練習設定；連結不含歌曲檔案。");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("practice");
+      window.history.replaceState({}, "", url.toString());
+    } else if (shareValue) {
+      const sharedInfo = describePracticeShare(shareValue);
+      setShareNotice(sharedInfo
+        ? `分享設定適用於「${sharedInfo.title}」；請自行載入相同曲目後套用。${sharedInfo.sourceUrl ? ` 來源：${sharedInfo.sourceUrl}` : ""}`
+        : "分享設定無效，已略過。");
+    }
+    restoredPreferenceId.current = id;
+  }, [song]);
+  useEffect(() => {
+    if (!song || restoredPreferenceId.current !== songPreferenceId(song)) return;
+    if (skipPreferenceWrite.current) {
+      skipPreferenceWrite.current = false;
+      return;
+    }
+    writeSongPreferences(song, currentPreferences());
+  }, [song, speed, transpose, loop, loopA, loopB, muted, autoPolicy, splitPitch]);
   useEffect(() => {
     splitRatioRef.current = settings.mobileScoreSplit;
     setSplitRatio(settings.mobileScoreSplit);
   }, [settings.mobileScoreSplit]);
-  const expected =
-    mode === "practice" && practiceType === "wait"
-      ? (groupList[step] || []).map((n) => n.midi + transpose)
-      : [];
+  const expected = useMemo(
+    () =>
+      mode === "practice" && practiceType === "wait"
+        ? (waitGroups[step] || []).map((n) => n.midi + transpose)
+        : [],
+    [mode, practiceType, waitGroups, step, transpose],
+  );
   const refresh = useCallback(() => {
     const next = new Set(pressed.current.values());
     setActive((previous) =>
@@ -297,6 +426,7 @@ export default function App() {
     refresh();
   }, [refresh]);
   const stop = useCallback(() => {
+    if (songRef.current) rememberPosition(songRef.current, player.position);
     playToken.current++;
     practiceStart.current = 0;
     previousPosition.current = 0;
@@ -308,38 +438,145 @@ export default function App() {
     panic();
   }, [panic]);
   const resetPractice = () => {
-    practiceStart.current = player.position;
-    previousPosition.current = player.position;
+    const startAt = mode === "practice" && practiceType === "wait" && loop ? loopA : player.position;
+    practiceStart.current = startAt;
+    previousPosition.current = startAt;
     setStep(
       Math.max(
         0,
-        groupList.findIndex((g) => g[0].startTime >= player.position),
+        waitGroups.findIndex((g) => g[0].startTime >= startAt),
       ),
     );
     hit.current.clear();
     waitHeld.current.clear();
     setScore({ correct: 0, wrong: 0, offset: 0 });
   };
-  const load = (s: Song, targetMode: "auto" | "practice" = "practice") => {
+  const markSongChoice = () => {
+    songChoiceVersion.current++;
+    setDefaultSongLoading(false);
+  };
+  const load = (s: Song, targetMode: "auto" | "practice" | "accompaniment" = "practice", resumeAt = 0, keepComparison = false) => {
+    markSongChoice();
+    if (!keepComparison) originalComparison.current = null;
+    if (songRef.current) rememberPosition(songRef.current, player.position);
     stop();
+    const id = songPreferenceId(s);
+    const stored = readSongPreferences(s);
+    const shareValue = new URLSearchParams(window.location.search).get("practice");
+    const shared = shareValue ? decodePracticeShare(shareValue, s) : null;
+    const preferences = shared || stored;
+    if (preferences) applyPreferences(preferences);
+    else {
+      setSpeed(1);
+      setTranspose(0);
+      setLoop(false);
+      setLoopA(0);
+      setLoopB(s.duration);
+      setMuted([]);
+      setAutoPolicy(Object.fromEntries(s.tracks.map((_, i) => [i, s.tracks.length === 1 ? "bass" : "all"])));
+    }
+    restoredPreferenceId.current = id;
     setSong(s);
-    setMuted([]);
-    setAutoPolicy(
-      Object.fromEntries(
-        s.tracks.map((_, i) => [i, s.tracks.length === 1 ? "bass" : "all"]),
-      ),
-    );
-    setLoopA(0);
-    setLoopB(s.duration);
     setView("roll");
     setRollExpanded(true);
     setMode(targetMode);
     if (targetMode === "practice") setPracticeType("rhythm");
-    resetPractice();
-    setStatus(`${s.title} · ${s.notes.length} 個音符，解析成功`);
+    const resumePosition = Math.max(0, Math.min(s.duration, resumeAt));
+    const resumeGroups = groups(s, preferences?.muted || []);
+    setStep(Math.max(0, resumeGroups.findIndex((group) => group[0].startTime >= resumePosition)));
+    hit.current.clear();
+    practiceStart.current = resumePosition;
+    previousPosition.current = resumePosition;
+    player.setPosition(resumePosition);
+    setViewPosition(resumePosition);
+    setScore({ correct: 0, wrong: 0, offset: 0 });
+    if (shared) {
+      setShareNotice("已驗證並套用分享的練習設定；連結不含歌曲檔案。");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("practice");
+      window.history.replaceState({}, "", url.toString());
+    } else if (shareValue) {
+      const sharedInfo = describePracticeShare(shareValue);
+      setShareNotice(sharedInfo
+        ? `分享設定適用於「${sharedInfo.title}」；請先載入相同曲目。${sharedInfo.sourceUrl ? ` 來源：${sharedInfo.sourceUrl}` : ""}`
+        : "分享設定無效，已略過。");
+    }
+    let libraryNote = "";
+    try { rememberSong(s, resumePosition); }
+    catch (error) { libraryNote = ` · ${(error as Error).message}`; }
+    setStatus(`${s.title} · ${s.notes.length} 個音符，解析成功${libraryNote}`);
+  };
+  const loadDefaultSong = () => {
+    if (explicitDefaultLoad.current?.version === songChoiceVersion.current)
+      return explicitDefaultLoad.current.promise;
+    markSongChoice();
+    const requestVersion = songChoiceVersion.current;
+    setDefaultSongLoading(true);
+    setStatus("正在載入預設練習曲…");
+    const request = defaultSongLoader.current!()
+      .then((defaultSong) => {
+        if (songChoiceVersion.current === requestVersion) load(defaultSong);
+      })
+      .catch((error: unknown) => {
+        if (songChoiceVersion.current === requestVersion) {
+          const message = error instanceof Error ? error.message : "未知錯誤";
+          setStatus(`預設曲載入失敗：${message}。請再按「載入預設曲」重試。`);
+        }
+      })
+      .finally(() => {
+        if (songChoiceVersion.current === requestVersion) setDefaultSongLoading(false);
+        if (explicitDefaultLoad.current?.promise === request) explicitDefaultLoad.current = null;
+      });
+    explicitDefaultLoad.current = { promise: request, version: requestVersion };
+    return request;
+  };
+  useEffect(() => {
+    if (lastSong.current?.song) return;
+    let active = true;
+    const requestVersion = songChoiceVersion.current;
+    setDefaultSongLoading(true);
+    setStatus("正在準備預設練習曲…");
+    void applyIfCurrent(
+      defaultSongLoader.current!,
+      () => active && songChoiceVersion.current === requestVersion && !songRef.current,
+      (defaultSong) => {
+        songRef.current = defaultSong;
+        setSong(defaultSong);
+        setLoopB(defaultSong.duration);
+        setStatus(`${defaultSong.title} · ${defaultSong.notes.length} 個音符，解析成功`);
+      },
+    )
+      .catch((error: unknown) => {
+        if (!active || songChoiceVersion.current !== requestVersion) return;
+        const message = error instanceof Error ? error.message : "未知錯誤";
+        setStatus(`預設曲載入失敗：${message}。請按「載入預設曲」重試。`);
+      })
+      .finally(() => {
+        if (active && songChoiceVersion.current === requestVersion) setDefaultSongLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+  const restoreOriginalComparison = () => {
+    const original = originalComparison.current;
+    if (!original) return;
+    originalComparison.current = null;
+    load(original.song, original.mode as "auto" | "practice" | "accompaniment", original.position);
+    applyPreferences(original.preferences);
+    restoredPreferenceId.current = songPreferenceId(original.song);
+    setPracticeType(original.practiceType);
+    setShareNotice("已返回原曲並恢復練習設定。");
   };
   const playRecording = async (recording: Song) => {
-    load(recording, "auto");
+    if (song && recording.source.startsWith("本機") && !originalComparison.current) {
+      originalComparison.current = {
+        song,
+        preferences: currentPreferences(),
+        mode,
+        practiceType,
+        position: player.position,
+      };
+    }
+    load(recording, "auto", 0, true);
     const token = playToken.current;
     try {
       await engine.ready();
@@ -355,7 +592,7 @@ export default function App() {
       setStatus((e as Error).message);
     }
   };
-  const down = (id: string, base: number) => {
+  const down = (id: string, base: number, inputVelocity = settings.velocity) => {
     const inputStarted = performance.now();
     if (pressed.current.has(id)) return;
     const n = base + (manualTranspose ? transpose : 0);
@@ -366,17 +603,17 @@ export default function App() {
     if (stage === "poster" && !id.startsWith("preview:")) startStage();
     pressed.current.set(id, n);
     if (!lidOpen && !id.startsWith("preview:")) lidHint.noteAttacked();
-    if (!id.startsWith("preview:")) recorder.attack(id, n, settings.velocity);
+    if (!id.startsWith("preview:")) recorder.attack(id, n, inputVelocity);
     waitHeld.current.add(n);
     refresh();
     const attackManual = () => {
       if (pressed.current.get(id) !== n) return;
-      engine.attack(id, n, settings.velocity);
+      engine.attack(id, n, inputVelocity);
       if (import.meta.env.DEV) {
-        console.debug("Manual piano input → attack", {
+        console.debug("Manual piano input → attack", JSON.stringify({
           elapsedMs: Number((performance.now() - inputStarted).toFixed(2)),
           ...engine.audioLatency(),
-        });
+        }));
       }
     };
     if (engine.sampler?.loaded) attackManual();
@@ -387,12 +624,19 @@ export default function App() {
         .catch((e) => setStatus(e.message));
     if ((mode === "practice" || mode === "accompaniment") && song) {
       if (mode === "practice" && practiceType === "wait") {
-        const group = groupList[step] || [];
-        if (group.some((a) => a.midi + transpose === n)) {
+        const group = waitGroups[step] || [];
+        if (!group.length) {
+          setStatus("等待練習已完成；按『重新練習』可再彈一次。");
+        } else if (group.some((a) => a.midi + transpose === n)) {
           if (group.every((a) => waitHeld.current.has(a.midi + transpose))) {
             setScore((s) => ({ ...s, correct: s.correct + group.length }));
             player.setPosition(group[0].startTime);
-            setStep((s) => s + 1);
+            const progress = advanceWaitStep(step, waitGroups.length, loop);
+            setStep(progress.step);
+            if (progress.wrapped) {
+              player.setPosition(loopA);
+              setViewPosition(loopA);
+            } else if (progress.complete) setStatus("等待練習完成；按『重新練習』可再彈一次。");
           }
         } else setScore((s) => ({ ...s, wrong: s.wrong + 1 }));
       } else if (player.playing) {
@@ -401,9 +645,7 @@ export default function App() {
             (a) =>
               !muted.includes(a.trackId) &&
               (mode !== "accompaniment" ||
-                autoPolicy[a.trackId] === "manual" ||
-                (autoPolicy[a.trackId] === "bass" &&
-                  a.midi + transpose > 60)) &&
+                !isAutomaticNote(autoPolicy[a.trackId], a.midi + transpose, splitPitch)) &&
               !hit.current.has(a.id) &&
               a.startTime >= practiceStart.current &&
               a.midi + transpose === n &&
@@ -429,7 +671,7 @@ export default function App() {
   const downRef = useRef(down);
   downRef.current = down;
   const handlePianoDown = useCallback(
-    (id: string, midi: number) => void downRef.current(id, midi),
+    (id: string, midi: number, velocity?: number) => void downRef.current(id, midi, velocity),
     [],
   );
   const primeAudio = useCallback(() => {
@@ -443,19 +685,30 @@ export default function App() {
       .ready()
       .then(() => {
         if (import.meta.env.DEV)
-          console.debug("Piano audio context latency", engine.audioLatency());
+          console.debug("Piano audio context latency", JSON.stringify(engine.audioLatency()));
       })
       .catch((e) => {
         audioPrimed.current = false;
         setStatus(e.message);
       });
   }, []);
-  const startStage = () => {
+  const startStage = (intent: "free" | "load" = "free") => {
     if (stage !== "poster") return;
     // Call ready before any await so the first touch unlocks audio on mobile.
     primeAudio();
     setStage("playing");
-    if (stageRef.current) void requestLandscape(stageRef.current);
+    if (intent === "free") {
+      markSongChoice();
+      stop();
+      songRef.current = null;
+      setSong(null);
+      setMode("auto");
+      setStatus("自由演奏已就緒；掀開琴蓋可載入歌曲練習。");
+    } else {
+      lidHint.dismiss();
+      setLidTab("stand");
+      setLidOpen(true);
+    }
   };
   const enterFocusView = () => {
     focusView.enter();
@@ -469,8 +722,18 @@ export default function App() {
     lidHint.dismiss();
     setLidOpen(true);
   };
+  const toggleMobileScore = () => {
+    if (mobileScoreShown) {
+      settings.set({ mobileScoreVisible: false });
+      return;
+    }
+    settings.set({ mobileScoreVisible: true, mobileStageLayout: "score" });
+    setLidTab("stand");
+    if (!lidOpen) openLid();
+  };
+  const toggleMobilePlayback = () =>
+    settings.set({ mobilePlaybackVisible: !useSettings.getState().mobilePlaybackVisible });
   const leaveStage = async () => {
-    await releaseOrientationLock();
     if (document.fullscreenElement) {
       try {
         await document.exitFullscreen();
@@ -486,11 +749,9 @@ export default function App() {
     (note: Note) => {
       if (mode !== "accompaniment") return true;
       const policy = autoPolicy[note.trackId];
-      return (
-        policy === "all" || (policy === "bass" && note.midi + transpose <= 60)
-      );
+      return isAutomaticNote(policy, note.midi + transpose, splitPitch);
     },
-    [mode, autoPolicy, transpose],
+    [mode, autoPolicy, transpose, splitPitch],
   );
   const audition = async () => {
     if (recorder.recording) {
@@ -531,13 +792,24 @@ export default function App() {
     const off = (e: KeyboardEvent) => {
       release(e.code);
       if (e.code === settings.pedal) {
-        engine.sustain(false);
-        recorder.pedal(false);
-        setPedal(false);
+        engine.sustain(false, undefined, "manual");
+        recorder.pedal(engine.pedal);
+        setPedal(engine.pedal);
       }
     };
     const on = (e: KeyboardEvent) => {
       if (e.code === "Escape" && panel) {
+        if (panel === "keyboard" && bindingConflict) {
+          setBindingConflict(null);
+          setWarning("已取消取代，原綁定保留");
+          return;
+        }
+        if (panel === "keyboard" && selected !== null) {
+          setSelected(null);
+          setPendingBinding(null);
+          setWarning("已取消快速綁定");
+          return;
+        }
         setPanel("");
         setSelected(null);
         setPendingBinding(null);
@@ -545,15 +817,7 @@ export default function App() {
       }
       if (e.repeat || e.code.startsWith("Shift")) return;
       const code = keyboardBinding(e);
-      const target = e.target as HTMLElement;
-      if (
-        target.matches(
-          'input:not([type="checkbox"]):not([type="range"]):not([type="radio"]),textarea,select',
-        ) ||
-        target.closest(".stage-slider, .stage-segmented, .stage-stepper") ||
-        target.isContentEditable
-      )
-        return;
+      if (shouldIgnorePianoShortcut(e.target, e.key)) return;
       const focusNeedsShift = Boolean(
         settings.mapping.KeyF !== undefined || settings.chordMapping.KeyF,
       );
@@ -584,9 +848,9 @@ export default function App() {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.code === settings.pedal) {
         e.preventDefault();
-        engine.sustain(true);
-        recorder.pedal(true);
-        setPedal(true);
+        engine.sustain(true, undefined, "manual");
+        recorder.pedal(engine.pedal);
+        setPedal(engine.pedal);
         return;
       }
       if (e.code === "PageUp" || e.code === "PageDown") {
@@ -616,8 +880,9 @@ export default function App() {
     const blur = () => {
       for (const id of [...pressed.current.keys()]) release(id);
       waitHeld.current.clear();
-      engine.sustain(false);
-      setPedal(false);
+      engine.sustain(false, undefined, "manual");
+      recorder.pedal(engine.pedal);
+      setPedal(engine.pedal);
     };
     window.addEventListener("keydown", on);
     window.addEventListener("keyup", off);
@@ -638,6 +903,7 @@ export default function App() {
     panel,
     selected,
     pendingBinding,
+    bindingConflict,
     release,
     panic,
     settings.mapping,
@@ -660,7 +926,8 @@ export default function App() {
     };
     player.onEnd = () => {
       setPlaying(false);
-      setPedal(false);
+      setPedal(engine.pedal);
+      if (songRef.current) rememberPosition(songRef.current, player.position);
     };
     return () => {
       playToken.current++;
@@ -668,8 +935,21 @@ export default function App() {
       player.stop();
     };
   }, []);
+  useEffect(() => {
+    const checkpoint = () => {
+      if (songRef.current) rememberPosition(songRef.current, player.position);
+    };
+    window.addEventListener("beforeunload", checkpoint);
+    return () => window.removeEventListener("beforeunload", checkpoint);
+  }, []);
   const play = async (requestedMode = mode) => {
-    if (!song) return;
+    if (!song) {
+      setStatus(defaultSongLoading
+        ? "預設練習曲仍在載入，請稍後再播放；也可匯入自己的曲目。"
+        : "目前沒有已載入的曲目；請載入預設曲或匯入曲目。",
+      );
+      return;
+    }
     const token = ++playToken.current;
     if (requestedMode === "practice" && practiceType === "wait") {
       setStatus("等待模式已就緒：同時按住亮起的琴鍵即可前進");
@@ -713,15 +993,19 @@ export default function App() {
     noteIsAuto,
   ]);
   const seek = (p: number) => {
-    previousPosition.current = p;
-    practiceStart.current = p;
-    player.setPosition(p);
+    const target = mode === "practice" && practiceType === "wait" && loop && p >= loopB ? loopA : p;
+    previousPosition.current = target;
+    practiceStart.current = target;
+    player.setPosition(target);
+    setViewPosition(target);
+    if (songRef.current) rememberPosition(songRef.current, target);
     if (player.playing && song) player.start(song);
     if (mode === "practice") {
+      const nextGroup = waitGroups.findIndex((group) => group[0].startTime >= target);
       setStep(
         Math.max(
           0,
-          groupList.findIndex((g) => g[0].startTime >= p),
+          nextGroup < 0 ? waitGroups.length : nextGroup,
         ),
       );
       hit.current.clear();
@@ -729,14 +1013,18 @@ export default function App() {
     }
   };
   const importFile = async (f: File) => {
+    markSongChoice();
     setLoading(true);
     try {
       if (f.size > 20 * 1024 * 1024) throw Error("檔案上限 20 MB");
-      load(
-        /\.(xml|musicxml)$/i.test(f.name)
-          ? parseXml(await f.text(), f.name)
-          : await parseMidi(await f.arrayBuffer(), f.name),
-      );
+      let importedSong: Song;
+      if (/\.(xml|musicxml)$/i.test(f.name)) {
+        const { parseMusicXml } = await import("./music/MusicXml");
+        importedSong = parseMusicXml(await f.text(), f.name);
+      } else {
+        importedSong = await parseMidi(await f.arrayBuffer(), f.name);
+      }
+      load(importedSong);
     } catch (e) {
       setStatus("匯入失敗：" + (e as Error).message);
     } finally {
@@ -750,6 +1038,7 @@ export default function App() {
       setStatus((e as Error).message);
       return;
     }
+    markSongChoice();
     setLoading(true);
     setStatus("URL 格式有效 · 正在取得歌曲資訊…");
     try {
@@ -780,13 +1069,12 @@ export default function App() {
     a.click();
     URL.revokeObjectURL(u);
   };
-  const shownMap = Object.fromEntries(
-    Object.entries(settings.mapping).map(([k, n]) => [
-      k,
-      n + settings.octave * 12,
-    ]),
+  const shownMap = useMemo(
+    () => Object.fromEntries(Object.entries(settings.mapping).map(([k, n]) => [k, n + settings.octave * 12])),
+    [settings.mapping, settings.octave],
   );
-  const bindShortcut = (code: string, midi: number) => {
+  const bindShortcut = (code: string, midi: number, replace = false) => {
+    setBindingConflict(null);
     if (!validShortcut(code)) {
       setWarning("請使用字母、數字或符號鍵");
       return;
@@ -797,8 +1085,9 @@ export default function App() {
     }
     const map = { ...settings.mapping };
     const occupied = map[code];
-    if (occupied !== undefined && occupied !== midi) {
-      setWarning(`${shortcutLabel(code)} 已綁定 ${noteName(occupied)}，請先解除該綁定。`);
+    if (occupied !== undefined && occupied !== midi && !replace) {
+      setBindingConflict({ code, midi, occupied });
+      setWarning("");
       return;
     }
     for (const key in map) if (map[key] === midi) delete map[key];
@@ -807,15 +1096,22 @@ export default function App() {
     setWarning(`${shortcutLabel(code)} → ${noteName(midi)} 已儲存`);
     setSelected(null);
     setPendingBinding(null);
+    setBindingConflict(null);
   };
-  const selectMappingNote = (midi: number) => {
-    if (pendingBinding) {
-      bindShortcut(pendingBinding, midi);
+  const pendingBindingRef = useRef(pendingBinding);
+  pendingBindingRef.current = pendingBinding;
+  const bindShortcutRef = useRef(bindShortcut);
+  bindShortcutRef.current = bindShortcut;
+  const selectMappingNote = useCallback((midi: number) => {
+    setBindingConflict(null);
+    const pending = pendingBindingRef.current;
+    if (pending) {
+      bindShortcutRef.current(pending, midi);
       return;
     }
     setSelected(midi);
-    setWarning("");
-  };
+    setWarning(`已選 ${noteName(midi)}。現在按下要綁定的電腦按鍵；按 Esc 可取消。`);
+  }, []);
   const allActive = new Set([...active, ...player.getActiveNotesSnapshot()]);
   const manualFollow =
     (mode === "practice" && practiceType === "rhythm") ||
@@ -838,12 +1134,20 @@ export default function App() {
         n.midi + transpose <= 108 &&
         n.startTime >= practiceStart.current,
     ) || [];
-  const missed =
+  const missedNotes =
     mode === "practice" && practiceType === "rhythm"
       ? considered.filter(
           (n) => n.startTime < position - tolerance && !hit.current.has(n.id),
-        ).length
-      : 0;
+        )
+      : [];
+  const missed = missedNotes.length;
+  const missedPitch = [...missedNotes.reduce((counts, note) => counts.set(note.midi, (counts.get(note.midi) || 0) + 1), new Map<number, number>())]
+    .sort((a, b) => b[1] - a[1])[0];
+  const missedWindow = [...missedNotes.reduce((counts, note) => {
+    const start = Math.floor(note.startTime / 4) * 4;
+    counts.set(start, (counts.get(start) || 0) + 1);
+    return counts;
+  }, new Map<number, number>())].sort((a, b) => b[1] - a[1])[0];
   const bpm = song
     ? [...(song.tempos.length ? song.tempos : [{ time: 0, bpm: song.tempo }])]
         .reverse()
@@ -854,6 +1158,26 @@ export default function App() {
     setLoopA(Math.max(0, Math.min(loopB - 0.1, next)));
   const setLoopBFromPosition = (next: number) =>
     setLoopB(Math.max(loopA + 0.1, Math.min(song?.duration || 1, next)));
+  const selectLoopRange = (a: number, b: number) => {
+    if (!song) return;
+    const range = normalizeLoopRange(a, b, song.duration);
+    setLoopA(range.a);
+    setLoopB(range.b);
+    setLoop(true);
+    setLoopSelectionArmed(false);
+    setShareNotice(`已設定 Piano Roll 循環 ${clock(range.a)}–${clock(range.b)}。`);
+  };
+  const sharePractice = async () => {
+    if (!song) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("practice", encodePracticeShare(song, currentPreferences()));
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setShareNotice("練習設定連結已複製；曲目檔案不會包含在連結中。接收者需自行載入相同曲目。");
+    } catch {
+      setShareNotice(url.toString());
+    }
+  };
   const playbackBar = (
           <div
             className={`player ${moreControlsOpen ? "more-controls-open" : ""} ${!lidOpen && hasMiniPlayback ? "player-mini" : ""}`}
@@ -863,11 +1187,11 @@ export default function App() {
               <button
                 type="button"
                 className="focus-entry"
-                aria-label="進入專注模式"
-                title={`專注模式（${settings.mapping.KeyF !== undefined || settings.chordMapping.KeyF ? "Shift+F" : "F"}）`}
+                aria-label="進入專注練習"
+                title={`專注練習（${settings.mapping.KeyF !== undefined || settings.chordMapping.KeyF ? "Shift+F" : "F"}）`}
                 onClick={enterFocusView}
               >
-                <Maximize2 size={14} /> 專注模式
+                <Maximize2 size={14} /> 專注練習
               </button>
               <strong>{song?.title || "自由演奏"}</strong>
               <button
@@ -876,7 +1200,7 @@ export default function App() {
                 aria-expanded={moreControlsOpen}
                 onClick={() => setMoreControlsOpen((open) => !open)}
               >
-                <Settings2 size={15} /> {moreControlsOpen ? "收起更多" : "更多"}
+                <Settings2 size={15} /> {moreControlsOpen ? "收起設定" : "播放設定"}
               </button>
             </div>
             <PlaybackProgress
@@ -907,6 +1231,7 @@ export default function App() {
                   disabled={!song}
                   onClick={() => {
                     if (playing) {
+                      if (songRef.current) rememberPosition(songRef.current, player.position);
                       player.stop(false);
                       setPlaying(false);
                       setActive(new Set());
@@ -961,9 +1286,9 @@ export default function App() {
                   aria-label="延音"
                   aria-pressed={pedalVisible}
                   onClick={() => {
-                    engine.sustain(!pedal);
-                    recorder.pedal(!pedal);
-                    setPedal(!pedal);
+                    engine.sustain(!engine.pedals.has("manual"), undefined, "manual");
+                    recorder.pedal(engine.pedal);
+                    setPedal(engine.pedal);
                   }}
                 >
                   ⌁ <span>延音</span>
@@ -991,6 +1316,9 @@ export default function App() {
       data-view={focusView.active ? "focus" : "studio"}
       data-lid={lidOpen ? "open" : "closed"}
       data-mobile-piano-expanded={mobilePianoExpanded ? "true" : "false"}
+      data-keyboard-only={keyboardOnly.active ? "true" : "false"}
+      data-mobile-score-visible={settings.mobileScoreVisible ? "true" : "false"}
+      data-mobile-playback-visible={settings.mobilePlaybackVisible ? "true" : "false"}
       data-rotate={rotate ? "true" : "false"}
       data-lid-tab={lidTab}
       data-chord-enabled={settings.chordEnabled ? "true" : "false"}
@@ -1000,7 +1328,7 @@ export default function App() {
           stage === "poster" &&
           event.target instanceof Element &&
           Boolean(event.target.closest("[data-stage-start]"))
-        ) startStage();
+        ) startStage(event.target.closest(".stage-load-song") ? "load" : "free");
         primeAudio();
       }}
       onKeyDownCapture={primeAudio}
@@ -1019,11 +1347,27 @@ export default function App() {
         } as CSSProperties}
       >
       <header>
-        <div className="header-status" role="status" aria-label={modeNotice || `音源狀態：${audio}`}>
+        <div className="header-status" role="status" aria-label={modeNotice || (defaultSongLoading ? "正在載入預設練習曲" : `音源狀態：${audio}`)}>
           <span className={`audio-status-dot ${audio.includes("已就緒") ? "ready" : ""}`} />
-          <span>{modeNotice || (audio.includes("已就緒") ? "音源就緒" : audio.includes("載入") ? "載入中" : audio)}</span>
+          <span>{modeNotice || (defaultSongLoading ? "準備預設曲…" : audio.includes("已就緒") ? "音源就緒" : audio.includes("載入") ? "載入中" : audio)}</span>
         </div>
         <nav>
+          {stage === "playing" && (
+            <button
+              type="button"
+              className="orientation-toggle"
+              aria-pressed={settings.mobileOrientation === "landscape"}
+              aria-label={settings.mobileOrientation === "landscape" ? "使用直向演奏版面" : "使用橫向演奏版面"}
+              title="版面方向可隨時切換，不會停止播放"
+              onClick={() => {
+                const next = settings.mobileOrientation === "landscape" ? "portrait" : "landscape";
+                settings.set({ mobileOrientation: next });
+                setModeNotice(next === "landscape" ? "已切換橫向演奏版面；點擊方向按鈕可切回直向。" : "已切回直向版面。播放進度保持不變。");
+              }}
+            >
+              {settings.mobileOrientation === "landscape" ? "直向" : "橫向演奏"}
+            </button>
+          )}
           <button
             aria-label={immersive || fullscreen ? "離開全螢幕" : "全螢幕"}
             onClick={() => {
@@ -1069,11 +1413,6 @@ export default function App() {
           <X size={15} /> <span>離開</span>
         </button>
       )}
-      {rotateHintVisible && (
-        <div className="stage-rotate-hint" role="status" aria-live="polite">
-          <RotateCcw size={15} /> <span>逆時針轉動手機</span>
-        </div>
-      )}
       <main>
         <section
           className="studio"
@@ -1089,8 +1428,11 @@ export default function App() {
           }
         >
           <div className="stage-prompt" data-stage-start>
-            <button type="button" onClick={startStage}>開始彈奏</button>
-            <span>進入演奏視角</span>
+            <button type="button" onClick={() => startStage("free")}>直接彈奏</button>
+            <button type="button" className="stage-load-song" onClick={() => startStage("load")}>
+              <Upload size={14} /> 載入歌曲練習
+            </button>
+            <span>開啟鋼琴後可使用觸控、電腦鍵盤或外接 MIDI 鍵盤</span>
           </div>
           <div
             className={`focus-toolbar ${focusMoreOpen ? "focus-more-open" : ""}`}
@@ -1103,14 +1445,15 @@ export default function App() {
             <strong className="focus-song-title" title={song?.title || "即興演奏"}>
               {song?.title || "即興演奏"}
             </strong>
+            <RecordingIndicator recording={isRecording} />
             <button
               type="button"
               className="focus-more-toggle"
-              aria-label={focusMoreOpen ? "收起專注設定" : "更多專注設定"}
+              aria-label={focusMoreOpen ? "收起專注設定" : "專注設定"}
               aria-expanded={focusMoreOpen}
               onClick={() => setFocusMoreOpen((open) => !open)}
             >
-              ⋯
+              <Settings2 size={15} /><span>設定</span>
             </button>
             <div className="focus-more-controls">
               <div className="focus-mode-control">
@@ -1159,6 +1502,7 @@ export default function App() {
               disabled={!song}
               onClick={() => {
                 if (playing) {
+                  if (songRef.current) rememberPosition(songRef.current, player.position);
                   player.stop(false);
                   setPlaying(false);
                   setActive(new Set());
@@ -1187,6 +1531,10 @@ export default function App() {
               openLid();
             }}
             player={playbackBar}
+            scoreVisible={mobileScoreShown}
+            onScoreToggle={toggleMobileScore}
+            playbackVisible={settings.mobilePlaybackVisible}
+            onPlaybackToggle={toggleMobilePlayback}
             activeTab={lidTab}
             onTabChange={(id) => {
               if (id === "record") setRecordingRequested(true);
@@ -1270,9 +1618,7 @@ export default function App() {
                             )}
                           </Suspense>
                         </div>
-                        {view === "score" ? null : view === "roll" ? (
-                          <>
-                            <div className="roll-label">
+                        <div className="roll-label" hidden={view !== "roll"}>
                               <span>
                                 <i />
                                 {manualFollow && modeNotice === "已切換到練習模式 · 手動跟彈"
@@ -1313,6 +1659,15 @@ export default function App() {
                                 </label>
                                 <button
                                   type="button"
+                                  className={loopSelectionArmed ? "selected" : ""}
+                                  aria-pressed={loopSelectionArmed}
+                                  title="在音符區由上往下拖曳，選取循環 A 到 B"
+                                  onClick={() => setLoopSelectionArmed((armed) => !armed)}
+                                >
+                                  {loopSelectionArmed ? "拖曳選取 A/B…" : "選取循環 A/B"}
+                                </button>
+                                <button
+                                  type="button"
                                   className="roll-expand-button"
                                   aria-pressed={rollExpanded}
                                   onClick={() => setRollExpanded((v) => !v)}
@@ -1327,28 +1682,25 @@ export default function App() {
                                 <button
                                   type="button"
                                   className="roll-focus-entry"
-                                  aria-label="進入專注模式"
-                                  title={`專注模式（${settings.mapping.KeyF !== undefined || settings.chordMapping.KeyF ? "Shift+F" : "F"}）`}
+                                  aria-label="進入專注練習"
+                                  title={`專注練習（${settings.mapping.KeyF !== undefined || settings.chordMapping.KeyF ? "Shift+F" : "F"}）`}
                                   onClick={enterFocusView}
                                 >
-                                  <Maximize2 size={13} /> 專注模式
+                                  <Maximize2 size={13} /> 專注練習
                                 </button>
                               </div>
-                            </div>
-                            {!song && (
-                              <p className="empty-roll">
-                                匯入歌曲，讓旋律躍然眼前。
-                              </p>
-                            )}
-                          </>
-                        ) : song?.xml && transpose === 0 ? (
-                          <>
-                            <p className="sheet-note">
-                              MusicXML 原始記譜 · 游標依原始音符位置同步追蹤。
-                            </p>
-                            <Sheet song={song} />
-                          </>
-                        ) : (
+                        </div>
+                        {view === "roll" && !song && (
+                          <p className="empty-roll">
+                            匯入歌曲，讓旋律躍然眼前。
+                          </p>
+                        )}
+                        <PersistentSheetHost
+                          visible={view === "sheet"}
+                          song={song}
+                          transpose={transpose}
+                        />
+                        {view === "sheet" && (!song?.xml || transpose !== 0) && (
                           <div className="notation-empty">
                             <Music2 size={30} />
                             <p>
@@ -1383,117 +1735,50 @@ export default function App() {
                             octave={settings.octave}
                             manual={manualFollow}
                             autoPolicy={mode === "accompaniment" ? autoPolicy : undefined}
+                            splitPitch={splitPitch}
                             focusMode={focusView.active}
+                            loopRange={{ enabled: loop, a: loopA, b: loopB }}
+                            loopSelectionArmed={loopSelectionArmed}
+                            rotate={rotate}
+                            onLoopSelect={selectLoopRange}
                           />
                         </div>
                       </div>
                       <div className="music-desk-ledge" aria-hidden="true" />
                     </section>
-                    <section className="midi-desk" aria-label="MIDI 放置區">
-                      <span className="eyebrow">MIDI PLAYER</span>
-                      <h3>把演奏檔放在這裡</h3>
-                      <p className="mobile-current-song">目前曲目：{song?.title || "自由演奏"}</p>
-                      <button
-                        className="midi-drop-slot"
-                        onClick={() => {
-                          file.current!.accept = ".mid,.midi";
-                          file.current!.click();
-                        }}
-                      >
-                        <Upload size={25} />
-                        <strong>放入 MIDI 檔案</strong>
-                        <span>點擊選擇，或將 .mid 拖進此區</span>
-                        <small>
-                          {song ? "目前：" + song.title : "尚未放入 MIDI"}
-                        </small>
-                      </button>{" "}
-                      <section className="import-box" onBlurCapture={(event) => {
-                        if (urlInputActive && !event.currentTarget.contains(event.relatedTarget as Node | null)) setUrlInputActive(false);
-                      }}>
-                        <div className="url-row" onClickCapture={() => {
-                          if (rotate && !urlInputActive) setUrlInputActive(true);
-                        }}>
-                          <Link2 size={18} />
-                          <input
-                            aria-label="詩歌網址"
-                            ref={urlInputRef}
-                            value={url}
-                            onFocus={() => { if (rotate) setUrlInputActive(true); }}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                setUrlInputActive(false);
-                                void fetchSong();
-                              }
-                              if (event.key === "Escape") setUrlInputActive(false);
-                            }}
-                            onChange={(e) => setUrl(e.target.value)}
-                            placeholder="貼上 hymnal.net 詩歌網址"
-                          />
-                          <button
-                            className="primary"
-                            disabled={loading}
-                            onClick={() => { if (rotate && !urlInputActive) { setUrlInputActive(true); requestAnimationFrame(() => urlInputRef.current?.focus()); return; } setUrlInputActive(false); void fetchSong(); }}
-                          >
-                            {loading ? "載入中…" : "載入樂譜"}
-                            <span>↗</span>
-                          </button>
-                        </div>
-                        {urlInputActive && <div className="portrait-input-notice" role="status">
-                          已暫時轉回直向
-                          <button type="button" onClick={() => setUrlInputActive(false)}>取消</button>
-                        </div>}
-                        <div className="import-bottom">
-                          <div className="import-actions">
-                            <button
-                              onClick={() => {
-                                file.current!.accept = ".mid,.midi";
-                                file.current!.click();
-                              }}
-                            >
-                              <Upload size={14} />
-                              匯入 MIDI
-                            </button>
-                            <button
-                              onClick={() => {
-                                file.current!.accept = ".xml,.musicxml";
-                                file.current!.click();
-                              }}
-                            >
-                              <Music2 size={14} />
-                              匯入 MusicXML
-                            </button>
-                            <span className="separator" />
-                            <button onClick={() => load(defaultSong)}>
-                              載入預設曲
-                            </button>
-                            <button onClick={() => load(demo)}>
-                              小星星測試
-                            </button>
-                            <button
-                              onClick={() => {
-                                stop();
-                                setSong(null);
-                                setStatus("歌曲已清除，可自由演奏");
-                              }}
-                            >
-                              清除
-                            </button>
-                          </div>
-                          <span className="local-badge">
-                            <span />
-                            檔案僅在瀏覽器處理
-                          </span>
-                        </div>
-                        <div className="status" role="status">
-                          {status}
-                          {status.includes("手動") && (
-                            <a href={url} target="_blank" rel="noreferrer">
-                              開啟原網站 ↗
-                            </a>
-                          )}
-                        </div>
-                      </section>
-                    </section>
+                    {songImportMounted && (
+                      <Suspense fallback={<p className="score-loading" role="status">正在載入曲目工具…</p>}>
+                        <LazySongImportTools
+                          song={song}
+                          url={url}
+                          loading={loading || defaultSongLoading}
+                          status={status}
+                          rotate={rotate}
+                          urlInputActive={urlInputActive}
+                          onUrlChange={setUrl}
+                          onUrlInputActiveChange={setUrlInputActive}
+                          onChooseFile={(accept) => {
+                            file.current!.accept = accept;
+                            file.current!.click();
+                          }}
+                          onFetchSong={() => void fetchSong()}
+                          onLoadDefault={() => void loadDefaultSong()}
+                          onLoadDemo={() => load(demo)}
+                          onClearSong={() => {
+                            markSongChoice();
+                            stop();
+                            songRef.current = null;
+                            setSong(null);
+                            setStatus("歌曲已清除，可自由演奏");
+                          }}
+                          onLibraryLoad={(nextSong, savedPosition) => load(nextSong, "practice", savedPosition)}
+                          onSharePractice={() => void sharePractice()}
+                          onRestoreOriginal={restoreOriginalComparison}
+                          shareNotice={shareNotice}
+                          hasOriginalComparison={Boolean(originalComparison.current)}
+                        />
+                      </Suspense>
+                    )}
                   </div>
                 ),
               },
@@ -1501,22 +1786,25 @@ export default function App() {
                 id: "sound",
                 label: "聲音",
                 content: (
-                  <div className="sound-tab-content">
-                    <InstrumentControls onPreview={() => void audition()} />
-                    <div className="sound-tab-settings">
-                      <label>琴鍵數
-                        <StageSegmented label="琴鍵數" value={settings.keyCount} options={[{ value: 61, label: "61 鍵" }, { value: 88, label: "88 鍵" }]} onChange={(keyCount) => settings.set({ keyCount })} />
-                      </label>
-                      <label className="sound-volume-control">
-                        音量
-                        <StageSlider aria-label="音量" min={0} max={1} step={0.01} value={settings.volume} onChange={(volume) => settings.set({ volume })} rotate={rotate} />
-                        <span>{Math.round(settings.volume * 100)}%</span>
-                      </label>
-                      <button className="key-binding" onClick={() => setPanel("keyboard")}>鍵盤設定</button>
-                      <button onClick={() => setPanel("audio")}>音訊設定</button>
-                      {song && song.tracks.length > 1 && <button onClick={() => setPanel("tracks")}>音軌</button>}
-                    </div>
-                  </div>
+                  soundToolsRequested ? (
+                    <Suspense fallback={<p className="score-loading" role="status">正在載入聲音工具…</p>}>
+                      <LazySoundTools
+                        rotate={rotate}
+                        hasMultipleTracks={Boolean(song && song.tracks.length > 1)}
+                        onDown={(id, midi, velocity) => void downRef.current(id, midi, velocity)}
+                        onUp={release}
+                        onPedal={(source, down) => {
+                          engine.sustain(down, undefined, source);
+                          recorder.pedal(engine.pedal);
+                          setPedal(engine.pedal);
+                        }}
+                        onPreview={() => void audition()}
+                        onOpenKeyboard={() => setPanel("keyboard")}
+                        onOpenAudio={() => setPanel("audio")}
+                        onOpenTracks={() => setPanel("tracks")}
+                      />
+                    </Suspense>
+                  ) : null
                 ),
               },
               {
@@ -1524,7 +1812,7 @@ export default function App() {
                 label: "和弦",
                 content: (
                   <ChordPanel
-                    onDown={(id, n) => void downRef.current(id, n)}
+                    onDown={(id, n, velocity) => void downRef.current(id, n, velocity)}
                     onUp={release}
                     blocked={panel !== ""}
                     resetKey={playToken.current}
@@ -1543,6 +1831,8 @@ export default function App() {
                     <LazyRecordingControls
                       onPlay={(recording) => void playRecording(recording)}
                       onRecordingChange={setIsRecording}
+                      referenceSong={originalComparison.current?.song || null}
+                      onCompareOriginal={restoreOriginalComparison}
                     />
                   </Suspense>
                 ) : null,
@@ -1559,11 +1849,7 @@ export default function App() {
               <span className="range-label">
                 {settings.keyCount === 88 ? "A0 — C8" : "C2 — C7"}
               </span>
-              {isRecording && (
-                <span className="recording-live-badge" role="status">
-                  <i aria-hidden="true" />錄製中
-                </span>
-              )}
+              <RecordingIndicator recording={isRecording} />
             </div>
             <div className="felt" />
             <div className="chord-buttons-slot" />
@@ -1582,9 +1868,32 @@ export default function App() {
               onBounds={setScrollMax}
               rotate={rotate}
               visibleWhiteKeys={settings.visibleWhiteKeys}
+              swipeScrollEnabled={settings.keyboardSwipeScroll}
+              chordMapping={settings.chordMapping}
+              chordEnabled={settings.chordEnabled}
             />
-            <div className="keyboard-zoom-control" aria-label="手機橫向鍵盤縮放">
-              <span>{settings.visibleWhiteKeys} 個白鍵</span>
+            <div className="keyboard-zoom-control" aria-label="琴鍵大小與滑動設定">
+              <RecordingIndicator recording={isRecording} />
+              <button
+                type="button"
+                className="mobile-score-toggle"
+                aria-pressed={mobileScoreShown}
+                aria-label={mobileScoreShown ? "隱藏曲譜區，保留琴鍵與工具面板" : "顯示曲譜區"}
+                onClick={toggleMobileScore}
+              >
+                {mobileScoreShown ? "隱藏曲譜" : "顯示曲譜"}
+              </button>
+              {song && (
+                <button
+                  type="button"
+                  className="mobile-playback-toggle"
+                  aria-pressed={settings.mobilePlaybackVisible}
+                  onClick={toggleMobilePlayback}
+                >
+                  {settings.mobilePlaybackVisible ? "隱藏播放" : "顯示播放"}
+                </button>
+              )}
+              <span>{settings.visibleWhiteKeys} 白鍵</span>
               <button
                 type="button"
                 className="keyboard-zoom-preset"
@@ -1594,8 +1903,11 @@ export default function App() {
               >
                 大鍵
               </button>
+              <button type="button" className="keyboard-only-entry" onClick={keyboardOnly.enter}>
+                純鍵盤
+              </button>
               <StageSlider
-                aria-label="調整手機橫向顯示白鍵數"
+                aria-label="調整手機琴鍵大小，至少顯示14個白鍵"
                 min={14}
                 max={28}
                 step={1}
@@ -1605,11 +1917,27 @@ export default function App() {
               />
               <button
                 type="button"
+                className="keyboard-swipe-toggle"
+                aria-pressed={settings.keyboardSwipeScroll}
+                aria-label={settings.keyboardSwipeScroll ? "已開啟滑動瀏覽琴鍵；滑動不會發聲，點擊可回到演奏" : "目前為演奏琴鍵模式；點擊可用滑動瀏覽琴鍵"}
+                title={settings.keyboardSwipeScroll ? "滑動只瀏覽音域，不會發聲" : "觸碰琴鍵會演奏；可切換成瀏覽模式"}
+                onClick={() => settings.set({ keyboardSwipeScroll: !settings.keyboardSwipeScroll })}
+              >
+                {settings.keyboardSwipeScroll ? "瀏覽中" : "演奏中"}
+              </button>
+              <button
+                type="button"
                 className="keyboard-focus-toggle"
                 aria-pressed={mobilePianoExpanded}
-                onClick={() => setMobilePianoExpanded((expanded) => !expanded)}
+                aria-label={mobilePianoExpanded ? "切換到看譜版面" : "切換到演奏版面"}
+                title={`目前是${mobilePianoExpanded ? "演奏版面" : "看譜版面"}；切換不會停止播放`}
+                onClick={() =>
+                  settings.set({
+                    mobileStageLayout: mobilePianoExpanded ? "score" : "performance",
+                  })
+                }
               >
-                {mobilePianoExpanded ? "顯示曲目" : "放大琴鍵"}
+                {mobilePianoExpanded ? "看譜版面" : "演奏版面"}
               </button>
             </div>
             <div className="octave-side-controls" aria-label="八度控制">
@@ -1619,6 +1947,9 @@ export default function App() {
             </div>
             <div className="piano-lip" />
           </div>
+          <button type="button" className="keyboard-only-exit" aria-label="退出純鍵盤模式並返回原畫面" title="退出純鍵盤" onClick={keyboardOnly.exit}>
+            <X size={20} aria-hidden="true" />
+          </button>
           <div className="keyboard-tools">
             <div>
               <span className="tiny-dot" />{" "}
@@ -1637,6 +1968,9 @@ export default function App() {
               </label>
               <StageSlider className="range-scroll" aria-label="鍵盤水平位置" min={0} max={scrollMax} step={1} value={scroll} onChange={setScroll} rotate={rotate} />
               <span className="separator" />
+              <button type="button" className="keyboard-only-entry" onClick={keyboardOnly.enter}>
+                純鍵盤
+              </button>
             </div>
           </div>
 
@@ -1758,7 +2092,7 @@ export default function App() {
                   <strong>選擇誰來彈</strong>
                   <span>
                     {song.tracks.length === 1
-                      ? "單音軌曲目：低音自動涵蓋 C4 以下，高音留給你彈。"
+                      ? `單音軌曲目：以 ${noteName(splitPitch)} 為分界（分界音歸低音），可選低音或高音自動演奏。`
                       : "可逐軌指定自動伴奏或手動演奏。"}
                   </span>
                 </div>
@@ -1769,7 +2103,7 @@ export default function App() {
                       setAutoPolicy(
                         Object.fromEntries(
                           song.tracks.map((_, i) => [i, "all"]),
-                        ) as Record<number, "all" | "bass" | "manual">,
+                        ) as Record<number, AutoPolicy>,
                       )
                     }
                   >
@@ -1781,7 +2115,7 @@ export default function App() {
                       setAutoPolicy(
                         Object.fromEntries(
                           song.tracks.map((_, i) => [i, "manual"]),
-                        ) as Record<number, "all" | "bass" | "manual">,
+                        ) as Record<number, AutoPolicy>,
                       )
                     }
                   >
@@ -1811,6 +2145,7 @@ export default function App() {
                           [
                             ["manual", "手彈"],
                             ["bass", "低音自動"],
+                            ["treble", "高音自動"],
                             ["all", "整軌自動"],
                           ] as const
                         ).map(([value, label]) => (
@@ -1834,31 +2169,24 @@ export default function App() {
                   );
                 })}
               </div>
+              <div className="accompaniment-heading">
+                <span>分界音（低音含分界，高音自動高於分界）</span>
+                <StageStepper label="分界音高" value={splitPitch} min={36} max={84} step={1} onChange={setSplitPitch} format={noteName} />
+              </div>
             </div>
           )}
           {mode === "practice" && (
             <div className="practice">
-              <StageSegmented
-                label="練習方式"
-                value={practiceType}
-                options={[{ value: "wait", label: "等待正確音符" }, { value: "rhythm", label: "節奏練習" }]}
-                onChange={(next) => {
-                  stop();
-                  resetPractice();
-                  setPracticeType(next);
-                }}
-              />
-              {practiceType === "rhythm" && (
-                <StageSegmented label="節奏容許誤差" value={tolerance} options={[0.1, 0.2, 0.3].map((t) => ({ value: t, label: `±${t * 1000}ms` }))} onChange={setTolerance} />
-              )}
               <span>
                 {practiceType === "wait"
-                  ? step >= groupList.length
+                  ? waitGroups.length === 0
+                    ? "A/B 區段內沒有音符，請重新選取循環範圍"
+                    : step >= waitGroups.length
                     ? "練習完成"
                     : `下一組：${expected.map(noteName).join(" + ")}`
                   : "按播放開始，依 Piano Roll 提示演奏"}
               </span>
-              {playing && <>
+              {(playing || practiceType === "wait") && <>
                 <span>正確 {score.correct} · 錯誤 {score.wrong} · 遺漏 {missed}</span>
                 <span>
                   完成 {Math.round((score.correct / Math.max(1, considered.length)) * 100)}%
@@ -1867,6 +2195,19 @@ export default function App() {
                     : ""}
                 </span>
               </>}
+              {missed > 0 && (missedPitch || missedWindow) && <div className="practice-feedback" aria-live="polite">
+                <strong>下一步可以加強</strong>
+                {missedPitch && <span>最常漏掉：{noteName(missedPitch[0])}（{missedPitch[1]} 次）</span>}
+                {missedWindow && <span>困難片段：{clock(missedWindow[0])} 附近（{missedWindow[1]} 個漏音）</span>}
+                {missedWindow && song && <button type="button" onClick={() => {
+                  const from = Math.max(0, missedWindow[0]);
+                  const to = Math.min(song.duration, missedWindow[0] + 4);
+                  setLoopA(from);
+                  setLoopB(Math.max(from + 0.1, to));
+                  setLoop(true);
+                  seek(from);
+                }}>循環練習這段</button>}
+              </div>}
               <button
                 onClick={() => {
                   stop();
@@ -1965,6 +2306,7 @@ export default function App() {
             setPanel("");
             setSelected(null);
             setPendingBinding(null);
+            setBindingConflict(null);
           }}
         >
           <section
@@ -1987,112 +2329,66 @@ export default function App() {
                 onClick={() => {
                   setPanel("");
                   setSelected(null);
-                    setPendingBinding(null);
+                  setPendingBinding(null);
+                  setBindingConflict(null);
                 }}
               >
                 <X size={20} />
               </button>
             </div>
             {panel === "keyboard" ? (
-              <>
-                <p>
-                  {pendingBinding
-                    ? `按鍵 ${shortcutLabel(pendingBinding)} 尚未綁定。點選下方琴鍵，就能把它指定給該音。`
-                    : "點選下方琴鍵，再按想指定的電腦按鍵即可完成綁定。"}
-                </p>
-                <div className="mapping-grid">
-                  {Array.from({ length: 88 }, (_, i) => i + 21).map((n) => (
-                    <button
-                      key={n}
-                      className={selected === n ? "selected" : ""}
-                      onClick={() => selectMappingNote(n)}
-                    >
-                      {noteName(n)}
-                      <small>
-                        {Object.entries(settings.mapping)
-                          .map(([k, v]) => [shortcutLabel(k), v] as const)
-                          .find(([, v]) => v === n)?.[0] || "—"}
-                      </small>
-                    </button>
-                  ))}
-                </div>
-                <p role="status">
-                  {selected ? `已選 ${noteName(selected)}，按下要綁定的電腦按鍵。` : ""}{" "}
-                  {warning}
-                </p>
-                <div className="modal-actions">
-                  <button
-                    onClick={() => {
-                      if (selected !== null) {
-                        const map = { ...settings.mapping };
-                        for (const k in map)
-                          if (map[k] === selected) delete map[k];
-                        settings.set({ mapping: map });
-                        setWarning("已解除");
-                        setSelected(null);
-                      }
-                    }}
-                  >
-                    解除選取
-                  </button>
-                  {pendingBinding && (
-                    <button onClick={() => { setPendingBinding(null); setWarning(""); }}>
-                      取消快速綁定
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      settings.set({ mapping: defaultMap });
-                      setSelected(null);
-                      setWarning("已恢復預設");
-                    }}
-                  >
-                    恢復預設
-                  </button>
-                  <button onClick={exportMap}>
-                    <Download size={13} />
-                    匯出 JSON
-                  </button>
-                  <button onClick={() => jsonFile.current?.click()}>
-                    匯入 JSON
-                  </button>
-                </div>
-                <label>
-                  踏板按鍵{" "}
-                  <StageSegmented label="踏板按鍵" value={settings.pedal} options={[{ value: "Space", label: "Space" }, { value: "ControlRight", label: "Control" }]} onChange={(pedal) => settings.set({ pedal })} />
-                </label>
-                <div className="profile">
-                  <input
-                    aria-label="配置名稱"
-                    value={profile}
-                    onChange={(e) => setProfile(e.target.value)}
-                  />
-                  <button
-                    onClick={() => {
-                      if (profile.trim())
-                        settings.set({
-                          profiles: {
-                            ...settings.profiles,
-                            [profile.trim()]: { ...settings.mapping },
-                          },
-                        });
-                    }}
-                  >
-                    儲存配置
-                  </button>
-                  <StageSegmented
-                    label="載入配置"
-                    value=""
-                    options={Object.keys(settings.profiles).map((key) => ({ value: key, label: key }))}
-                    onChange={(key) => {
-                      settings.set({
-                        mapping: settings.profiles[key],
-                      });
-                      setProfile(key);
-                    }}
-                  />
-                </div>
-              </>
+              <Suspense fallback={<p role="status">正在載入鍵盤綁定設定…</p>}>
+                <LazyKeyboardMappingPanel
+                  mapping={settings.mapping}
+                  profiles={settings.profiles}
+                  pedal={settings.pedal}
+                  selected={selected}
+                  pendingBinding={pendingBinding}
+                  bindingConflict={bindingConflict}
+                  warning={warning}
+                  profile={profile}
+                  onSelectMappingNote={selectMappingNote}
+                  onBindShortcut={bindShortcut}
+                  onCancelConflict={() => {
+                    setBindingConflict(null);
+                    setWarning("已取消取代，原綁定保留");
+                  }}
+                  onCancelPending={() => {
+                    setPendingBinding(null);
+                    setWarning("");
+                  }}
+                  onClearSelected={() => {
+                    if (selected === null) return;
+                    const map = { ...settings.mapping };
+                    for (const key in map) if (map[key] === selected) delete map[key];
+                    settings.set({ mapping: map });
+                    setWarning("已解除");
+                    setSelected(null);
+                  }}
+                  onRestoreDefaults={() => {
+                    settings.set({ mapping: defaultMap });
+                    setSelected(null);
+                    setWarning("已恢復預設");
+                  }}
+                  onExport={exportMap}
+                  onImport={() => jsonFile.current?.click()}
+                  onPedalChange={(pedal) => settings.set({ pedal })}
+                  onProfileChange={setProfile}
+                  onSaveProfile={(name) => {
+                    if (!name.trim()) return;
+                    settings.set({
+                      profiles: {
+                        ...settings.profiles,
+                        [name.trim()]: { ...settings.mapping },
+                      },
+                    });
+                  }}
+                  onLoadProfile={(name) => {
+                    settings.set({ mapping: settings.profiles[name] });
+                    setProfile(name);
+                  }}
+                />
+              </Suspense>
             ) : panel === "audio" ? (
               <>
                 <p>Grand Piano · Salamander 真實鋼琴取樣</p>
@@ -2162,6 +2458,19 @@ export default function App() {
         </div>
       )}
       </div>
+      {rotate && stage === "playing" && (
+        <button
+          type="button"
+          className="orientation-return"
+          aria-label="切回直向演奏版面"
+          onClick={() => {
+            settings.set({ mobileOrientation: "portrait" });
+            setModeNotice("已切回直向版面。播放進度保持不變。");
+          }}
+        >
+          直向
+        </button>
+      )}
     </div>
   );
 }

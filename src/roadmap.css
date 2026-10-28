@@ -1,0 +1,46 @@
+/* New roadmap controls share the existing black/gold instrument language. */
+.app[data-stage="poster"] .stage-prompt {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 8px;
+  padding-inline: 10px;
+}
+.app[data-stage="poster"] .stage-prompt button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 14px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.app[data-stage="poster"] .stage-prompt span { grid-column: 1 / -1; text-align: center; max-width: 95%; justify-self: center; }
+.web-midi-input { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 12px; }
+.web-midi-input > div { display: grid; gap: 4px; flex: 1 1 170px; }
+.web-midi-input small, .web-midi-input > span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.web-midi-input > span { flex: 1 0 100%; overflow-wrap: anywhere; }
+.web-midi-input button { min-height: 44px; }
+.practice-feedback { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; width: 100%; padding-top: 10px; border-top: 1px solid var(--line); }
+.practice-feedback strong { color: var(--gold); }
+.practice-feedback button { min-height: 44px; }
+.practice-share-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.practice-share-row button { min-height: 36px; font-size: 11px; }
+.practice-share-row [role="status"] { flex: 1 0 100%; font-size: 11px; overflow-wrap: anywhere; line-height: 1.5; max-width: 100%; }
+.player:not(.more-controls-open) .practice-share-row { display: none !important; }
+.app[data-lid="open"] .lid-playback-slot:has(.more-controls-open) { flex: 0 0 auto; height: auto; }
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open { grid-template-rows: 38px 26px auto auto auto; }
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open .practice-share-row { grid-column: 1 / -1; grid-row: 4; padding: 4px 8px; }
+.app[data-lid="open"] .lid-playback-slot .player.more-controls-open .loop-fields { grid-row: 5; }
+.practice-share-notice { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; overflow-wrap: anywhere; }
+@media (hover: none) and (pointer: coarse) {
+  .chord-panel .chord-control select, .practice-share-row button { min-height: 44px; }
+}
+@media (max-width: 767px), (orientation: landscape) and (max-height: 500px) {
+  .app[data-stage="poster"] .stage-prompt button { padding: 8px 12px; font-size: 12px; }
+  .practice-feedback { font-size: 11px; gap: 6px; }
+}

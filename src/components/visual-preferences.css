@@ -1,0 +1,16 @@
+.visual-preferences { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 12px; }
+.visual-preferences summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--text); }
+.visual-preferences > div { display: grid; gap: 8px; }
+.visual-preferences label { display: flex; gap: 10px; align-items: center; min-height: 44px; line-height: 1.5; }
+.visual-preferences small { color: var(--muted); line-height: 1.6; }
+html[data-large-key-labels="true"] .piano-key .note-label { font-size: clamp(11px, 1vw, 14px) !important; font-weight: 700; }
+html[data-large-key-labels="true"] .piano-key .key-binding { font-size: clamp(12px, 1.2vw, 16px) !important; font-weight: 800; }
+html[data-high-contrast="true"] { --muted: #ccd0c7; --line: #8d9586; --text: #fffdf3; --gold: #f2d78e; }
+html[data-high-contrast="true"] :is(button, select, input) { border-color: #9b9e8e; }
+html[data-high-contrast="true"] .piano-key.expected { outline: 3px solid #145c92; outline-offset: -3px; }
+:is(button, summary, input, select):focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+@media (hover: none) and (pointer: coarse) {
+  .stage-stepper button { min-width: 44px; width: 44px; min-height: 44px; height: 44px; }
+}
+@media (prefers-contrast: more) { :root { --muted: #ccd0c7; --line: #8d9586; } }
+@media (prefers-reduced-transparency: reduce) { .modal-backdrop { backdrop-filter: none; background: #10130ff5; } }

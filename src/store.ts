@@ -16,9 +16,17 @@ interface Settings {
   reverb: number;
   velocity: number;
   theme: string;
+  largeKeyLabels: boolean;
+  highContrast: boolean;
+  notePalette: "gold" | "accessible";
   keyCount: number;
   octave: number;
   visibleWhiteKeys: number;
+  keyboardSwipeScroll: boolean;
+  mobileOrientation: "portrait" | "landscape";
+  mobileStageLayout: "auto" | "score" | "performance";
+  mobileScoreVisible: boolean;
+  mobilePlaybackVisible: boolean;
   lidHintSeen: boolean;
   mobileScoreSplit: number;
   set: (s: Partial<Settings>) => void;
@@ -37,16 +45,24 @@ export const useSettings = create<Settings>()(
       reverb: 0.18,
       velocity: 0.75,
       theme: "dark",
+      largeKeyLabels: false,
+      highContrast: false,
+      notePalette: "gold",
       keyCount: 61,
       octave: 0,
       visibleWhiteKeys: 18,
+      keyboardSwipeScroll: false,
+      mobileOrientation: "portrait",
+      mobileStageLayout: "auto",
+      mobileScoreVisible: true,
+      mobilePlaybackVisible: true,
       lidHintSeen: false,
       mobileScoreSplit: 0.55,
       set: (s) => set(s),
     }),
     {
       name: "piano-studio-settings-v1",
-      version: 8,
+      version: 14,
       migrate: (state) => {
         const old = state as Partial<Settings>;
         const migrated = { ...old } as Partial<Settings> & {
@@ -70,6 +86,9 @@ export const useSettings = create<Settings>()(
         };
         return {
           ...migrated,
+          largeKeyLabels: old.largeKeyLabels === true,
+          highContrast: old.highContrast === true,
+          notePalette: old.notePalette === "accessible" ? "accessible" : "gold",
           mapping: simplifyMapping(old.mapping),
           visibleWhiteKeys:
             typeof old.visibleWhiteKeys === "number" &&
@@ -77,6 +96,14 @@ export const useSettings = create<Settings>()(
             old.visibleWhiteKeys <= 28
               ? old.visibleWhiteKeys
               : 18,
+          keyboardSwipeScroll: old.keyboardSwipeScroll === true,
+          mobileOrientation: old.mobileOrientation === "landscape" ? "landscape" : "portrait",
+          mobileStageLayout:
+            old.mobileStageLayout === "score" || old.mobileStageLayout === "performance"
+              ? old.mobileStageLayout
+              : "auto",
+          mobileScoreVisible: old.mobileScoreVisible !== false,
+          mobilePlaybackVisible: old.mobilePlaybackVisible !== false,
           profiles: Object.fromEntries(
             Object.entries(old.profiles || {}).map(([name, mapping]) => [
               name,

@@ -1,0 +1,718 @@
+/* Small-screen workspace: keep the score and tools in a scrollable region above
+   the keys, rather than pinning the lid tray over the playing surface. */
+@media (max-width: 767px) and (orientation: portrait) {
+  .app:not([data-view="focus"])[data-stage="playing"] > .stage > main {
+    height: calc(100dvh - 46px) !important;
+    min-height: 0 !important;
+    padding: 3px 5px max(3px, env(safe-area-inset-bottom)) !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .studio {
+    display: grid !important;
+    width: 100%;
+    height: 100% !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 38px minmax(150px, 1fr) 12px minmax(200px, clamp(200px, var(--mobile-piano-height), calc(100dvh - 300px))) auto !important;
+    grid-template-areas: "layout" "score" "splitter" "piano" "tools" !important;
+    gap: 3px !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .studio {
+    grid-template-rows: 38px auto minmax(200px, 1fr) auto !important;
+    grid-template-areas: "layout" "player" "piano" "tools" !important;
+  }
+  .app:not([data-view="focus"])[data-lid="closed"] .closed-playback-slot { grid-area: player; min-width: 0; }
+  .app:not([data-view="focus"])[data-lid="closed"] .mobile-score-splitter { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid { display: contents !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid > .lid-cover {
+    display: flex !important;
+    grid-area: layout;
+    width: 100%;
+    height: 38px !important;
+    min-height: 38px !important;
+    border-radius: 8px;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid > .lid-gold-rim { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open > .lid-tray {
+    display: block !important;
+    position: relative !important;
+    inset: auto !important;
+    grid-area: score;
+    width: 100%;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border-radius: 9px;
+    box-shadow: none;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray-inner {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 34px 42px auto minmax(0, 1fr) !important;
+    height: 100%;
+    min-height: 0;
+    padding: 4px 7px !important;
+    overflow: hidden;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .mobile-track-sheet-heading {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: flex !important;
+    min-height: 34px;
+    margin: 0;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .mobile-track-sheet-actions button { min-height: 36px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex !important;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 3px;
+    overflow-x: auto;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tabs button { min-height: 38px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-playback-slot {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: block !important;
+    min-height: 0;
+    overflow: visible;
+  }
+  .app:not([data-view="focus"])[data-mobile-playback-visible="false"] .piano-lid.is-open .lid-playback-slot,
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-playback-slot:has(.player[data-visible="false"]) {
+    display: none !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray [role="tabpanel"]:not([hidden]) {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    display: block !important;
+    min-height: 0;
+    padding: 2px 0 6px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray [role="tabpanel"][hidden] { display: none !important; }
+  .app:not([data-view="focus"])[data-lid="open"][data-mobile-score-visible="false"] .piano-lid.is-open .music-desk,
+  .app:not([data-view="focus"])[data-mobile-piano-expanded="true"] .piano-lid.is-open .music-desk { display: none !important; }
+  .app:not([data-view="focus"])[data-mobile-piano-expanded="true"] .studio { grid-template-rows: 38px minmax(150px, 1fr) 12px minmax(200px, clamp(200px, var(--mobile-piano-height), calc(100dvh - 300px))) auto !important; }
+  .app:not([data-view="focus"])[data-mobile-piano-expanded="true"] .studio:has(> .accompaniment-panel) {
+    grid-template-rows: 38px minmax(120px, 1fr) 12px minmax(200px, clamp(200px, 34dvh, calc(100dvh - 420px))) minmax(76px, 104px) auto !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .studio:has(> .accompaniment-panel) {
+    grid-template-rows: 38px minmax(120px, 1fr) 12px minmax(200px, clamp(200px, 34dvh, calc(100dvh - 420px))) minmax(76px, 104px) auto !important;
+    grid-template-areas: "layout" "score" "splitter" "piano" "accompaniment" "tools" !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .studio > .accompaniment-panel {
+    grid-area: accompaniment; box-sizing: border-box; min-height: 0; max-height: 104px;
+    margin: 0; padding: 5px 7px; overflow: auto; overscroll-behavior: contain;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .mobile-score-splitter {
+    display: flex !important;
+    grid-area: splitter;
+    position: relative !important;
+    inset: auto !important;
+    width: 100%;
+    height: 12px;
+    min-height: 12px;
+    z-index: 2;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing {
+    grid-area: piano !important;
+    width: 100%;
+    height: 100% !important;
+    min-height: 200px !important;
+    padding-inline: 0;
+    overflow: visible;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .fallboard { height: 28px !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .felt { height: 3px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .keyboard-scroll {
+    height: calc(100% - 86px) !important;
+    min-height: 110px;
+    width: calc(100% - 96px) !important;
+    margin-inline: 48px !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .keys {
+    height: 100% !important;
+    min-height: 110px !important;
+    max-height: none !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .keyboard-zoom-control {
+    min-height: 42px;
+    height: 42px;
+    overflow-x: auto;
+    padding: 2px 4px;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls {
+    position: absolute;
+    inset: 30px 0 42px;
+    display: block;
+    min-height: 0;
+    z-index: 8;
+    pointer-events: none;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button {
+    position: absolute;
+    top: 50%;
+    width: 42px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    transform: translateY(-50%);
+    pointer-events: auto;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button[aria-label="降低八度"] { left: 2px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button[aria-label="提高八度"] { right: 2px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls span { display: none; }
+  .app:not([data-view="focus"])[data-stage="playing"] .keyboard-tools {
+    grid-area: tools;
+    min-height: 28px;
+    max-height: 34px;
+    margin: 0;
+    padding: 2px 6px;
+    overflow: hidden;
+  }
+  .app:not([data-view="focus"])[data-lid="open"] .studio > .mode-row,
+  .app:not([data-view="focus"])[data-lid="open"] .studio > .practice { display: none !important; }
+  .app:not([data-view="focus"])[data-mobile-playback-visible="false"] .piano-lid.is-open .lid-playback-slot { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player.more-controls-open {
+    display: grid !important;
+    grid-template-columns: 40px minmax(60px, 1fr) minmax(72px, 1fr) 40px;
+    grid-template-rows: 42px auto auto;
+    height: auto !important;
+    max-height: 132px;
+    overflow-y: auto !important;
+    padding: 2px 4px;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray-inner:has(.lid-playback-slot .player.more-controls-open) {
+    grid-template-rows: 34px 42px minmax(112px, auto) minmax(0, 1fr) !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-playback-slot:has(.player.more-controls-open) {
+    min-height: 112px; overflow: visible;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .playback-heading { display: contents !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .playback-heading .player-more-toggle {
+    display: inline-flex !important;
+    grid-column: 4;
+    grid-row: 1;
+    min-width: 38px;
+    min-height: 38px;
+    justify-content: center;
+    padding: 3px;
+    font-size: 0;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .playback-settings,
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .toggles {
+    display: flex !important;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    min-width: 0;
+    gap: 4px;
+    overflow: visible;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .loop-fields {
+    display: flex !important;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    min-height: 36px;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .playback-settings .stage-slider { display: inline-flex !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player:not(.more-controls-open) .playback-settings,
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player:not(.more-controls-open) .toggles,
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player:not(.more-controls-open) .loop-fields { display: none !important; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray-inner { grid-template-rows: 34px 42px minmax(0, 1fr) auto !important; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray [role="tabpanel"]:not([hidden]) { grid-row: 3; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-playback-slot { grid-row: 4; min-height: 44px; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray-inner:has(.lid-playback-slot .player.more-controls-open) { grid-template-rows: 34px 42px 0 minmax(112px, auto) !important; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray-inner:has(.lid-playback-slot .player.more-controls-open) > [role="tabpanel"]:not([hidden]) { display: none !important; }
+}
+
+/* Compact phone landscape still reserves a real keybed; score controls scroll above it. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app:not([data-view="focus"])[data-stage="playing"] > .stage > header { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] > .stage > main {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    padding: 2px max(6px, env(safe-area-inset-left)) 2px max(6px, env(safe-area-inset-right)) !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .studio {
+    display: grid !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 32px minmax(96px, 1fr) 8px minmax(154px, clamp(154px, var(--mobile-piano-height), calc(100dvh - 150px))) !important;
+    grid-template-areas: "layout" "score" "splitter" "piano" !important;
+    gap: 2px !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .studio {
+    grid-template-rows: 32px 44px minmax(154px, 1fr) !important;
+    grid-template-areas: "layout" "player" "piano" !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="open"] .studio:has(> .accompaniment-panel) {
+    grid-template-rows: 32px minmax(72px, 1fr) 8px minmax(154px, clamp(154px, 40dvh, calc(100dvh - 210px))) minmax(58px, 76px) !important;
+    grid-template-areas: "layout" "score" "splitter" "piano" "accompaniment" !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .studio > .accompaniment-panel {
+    grid-area: accompaniment; box-sizing: border-box; min-height: 0; max-height: 76px;
+    margin: 0; padding: 4px 6px; overflow: auto; overscroll-behavior: contain;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .closed-playback-slot { grid-area: player; min-width: 0; }
+  .app:not([data-view="focus"])[data-stage="playing"] .keyboard-tools,
+  .app:not([data-view="focus"])[data-stage="playing"] .studio > footer { display: none !important; }
+  .app:not([data-view="focus"])[data-lid="closed"] .mobile-score-splitter { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid { display: contents !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid > .lid-cover {
+    grid-area: layout;
+    display: flex !important;
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open > .lid-tray {
+    display: block !important;
+    position: relative !important;
+    inset: auto !important;
+    grid-area: score;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray-inner {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 36px 44px minmax(0, 1fr) !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 2px 5px !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .mobile-track-sheet-heading { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tabs { grid-column: 1 / -1; grid-row: 1; display: flex !important; min-height: 36px; margin: 0; padding: 0; overflow-x: auto; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tabs button { min-height: 34px; min-width: max-content; padding: 2px 9px; white-space: nowrap; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-playback-slot { grid-column: 1 / -1; grid-row: 2; display: block !important; height: 44px; min-height: 44px; max-height: 44px; overflow: hidden; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray [role="tabpanel"]:not([hidden]) { display: block !important; grid-column: 1 / -1; grid-row: 3; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray [role="tabpanel"][hidden] { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing { grid-area: piano !important; display: flex !important; flex-direction: column; box-sizing: border-box; min-height: 154px !important; height: 100% !important; padding: 0; overflow: visible !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .fallboard { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .felt { flex: 0 0 2px; height: 2px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .keyboard-scroll { flex: 1 1 auto; height: auto !important; min-height: 110px !important; width: calc(100% - 100px) !important; margin: 0 50px !important; overflow-x: auto; overflow-y: hidden; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .keys { height: 100% !important; min-height: 110px !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .keyboard-zoom-control { display: flex !important; flex: 0 0 44px; box-sizing: border-box; height: 44px !important; min-height: 44px !important; max-height: 44px; overflow-x: auto; padding: 1px 4px; white-space: nowrap; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .piano-lip { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls { position: absolute; inset: 2px 0 44px; display: block; min-height: 0; z-index: 8; pointer-events: none; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button { position: absolute; top: 50%; width: 42px; height: 44px; min-height: 44px; padding: 0; transform: translateY(-50%); pointer-events: auto; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button[aria-label="降低八度"] { left: 2px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button[aria-label="提高八度"] { right: 2px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls span { display: none; }
+  .app:not([data-view="focus"])[data-lid="open"] .studio > .mode-row,
+  .app:not([data-view="focus"])[data-lid="open"] .studio > .practice { display: none !important; }
+  .app:not([data-view="focus"])[data-mobile-playback-visible="false"] .piano-lid.is-open .lid-playback-slot { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .playback-heading .player-more-toggle { display: inline-flex !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player.more-controls-open { display: grid !important; grid-template-rows: 38px auto auto; height: 112px !important; min-height: 112px !important; max-height: 112px !important; overflow-y: auto !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray-inner:has(.lid-playback-slot .player.more-controls-open) { grid-template-rows: 36px minmax(112px, auto) minmax(0, 1fr) !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-playback-slot:has(.player.more-controls-open) { height: 112px; min-height: 112px; max-height: 112px; overflow: visible; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player.more-controls-open .focus-entry { position: static !important; grid-column: 1; grid-row: 1; width: 36px; min-width: 36px; height: 36px; min-height: 36px; justify-content: center; padding: 0; font-size: 0; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player.more-controls-open .playback-settings,
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player.more-controls-open .toggles,
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .player.more-controls-open .loop-fields { display: flex !important; flex-wrap: wrap; grid-column: 1 / -1; }
+  .app:not([data-view="focus"])[data-lid="open"][data-mobile-score-visible="false"] .piano-lid.is-open .music-desk,
+  .app:not([data-view="focus"])[data-mobile-piano-expanded="true"] .piano-lid.is-open .music-desk { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .mobile-score-splitter { display: flex !important; grid-area: splitter; position: relative !important; inset: auto !important; width: 100%; height: 8px; min-height: 8px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .lid-playback-slot > .player:not(.more-controls-open),
+  .app:not([data-view="focus"])[data-stage="playing"] .closed-playback-slot .player-mini:not(.more-controls-open) {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 0 44px !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .lid-playback-slot > .player:not(.more-controls-open) .playback-heading,
+  .app:not([data-view="focus"])[data-stage="playing"] .closed-playback-slot .player-mini:not(.more-controls-open) .playback-heading { display: contents !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .lid-playback-slot > .player:not(.more-controls-open) .playback-heading > strong,
+  .app:not([data-view="focus"])[data-stage="playing"] .closed-playback-slot .player-mini:not(.more-controls-open) .playback-heading > strong { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .lid-playback-slot > .player:not(.more-controls-open) .player-more-toggle,
+  .app:not([data-view="focus"])[data-stage="playing"] .closed-playback-slot .player-mini:not(.more-controls-open) .player-more-toggle {
+    display: inline-flex !important;
+    position: absolute !important;
+    left: 6px !important;
+    top: 4px !important;
+    z-index: 5;
+    min-width: 36px;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    justify-content: center;
+    padding: 0 !important;
+    font-size: 0 !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .lid-playback-slot > .player:not(.more-controls-open) .focus-entry,
+  .app:not([data-view="focus"])[data-stage="playing"] .closed-playback-slot .player-mini:not(.more-controls-open) .focus-entry {
+    display: inline-flex !important;
+    position: absolute !important;
+    right: 6px !important;
+    top: 4px !important;
+    z-index: 5;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    justify-content: center;
+    padding: 0 !important;
+    font-size: 0 !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .lid-playback-slot > .player:not(.more-controls-open) .transport-row,
+  .app:not([data-view="focus"])[data-stage="playing"] .closed-playback-slot .player-mini:not(.more-controls-open) .transport-row {
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    display: flex !important;
+    width: max-content !important;
+    transform: translate(-50%, -50%) !important;
+    align-items: center;
+    justify-content: center;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .lid-playback-slot > .player:not(.more-controls-open) .transport,
+  .app:not([data-view="focus"])[data-stage="playing"] .closed-playback-slot .player-mini:not(.more-controls-open) .transport {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .lid-playback-slot > .player:not(.more-controls-open) .transport::before {
+    content: "";
+    flex: 0 0 36px;
+    width: 36px;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] button,
+  .app:not([data-view="focus"])[data-stage="playing"] .stage-leave { white-space: nowrap; min-width: max-content; }
+  .app:not([data-view="focus"])[data-stage="playing"] > .stage > header,
+  .app:not([data-view="focus"])[data-stage="playing"] > .stage > header nav { flex-direction: row !important; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray-inner { grid-template-rows: 36px minmax(0, 1fr) 44px !important; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray [role="tabpanel"]:not([hidden]) { grid-row: 2; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-playback-slot { grid-row: 3; height: 44px; min-height: 44px; max-height: 44px; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray-inner:has(.lid-playback-slot .player.more-controls-open) { grid-template-rows: 36px minmax(112px, auto) !important; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray-inner:has(.lid-playback-slot .player.more-controls-open) > [role="tabpanel"]:not([hidden]) { display: none !important; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-playback-slot:has(.player.more-controls-open) { grid-row: 2 !important; height: 112px; min-height: 112px; max-height: 112px; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-playback-slot:has(.player.more-controls-open) { height: 112px; min-height: 112px; max-height: 112px; overflow: visible; }
+}
+
+/* Touch tablets keep the same compact key navigation controls as phones. */
+@media (min-width: 768px) and (max-width: 1023px) and (pointer: coarse) {
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing > .keyboard-zoom-control { display: flex !important; }
+}
+
+/* Tablet portrait: the lid panel scrolls above a visible, touchable keyboard. */
+@media (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+  .app:not([data-view="focus"])[data-stage="playing"] > .stage > main { height: calc(100dvh - 48px) !important; min-height: 0 !important; overflow: hidden !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .studio {
+    display: grid !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 42px minmax(180px, 1fr) 14px minmax(220px, clamp(220px, var(--mobile-piano-height), calc(100dvh - 450px))) auto !important;
+    grid-template-areas: "layout" "score" "splitter" "piano" "tools" !important;
+    gap: 4px !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .studio {
+    grid-template-rows: 42px auto minmax(220px, 1fr) auto !important;
+    grid-template-areas: "layout" "player" "piano" "tools" !important;
+  }
+  .app:not([data-view="focus"])[data-lid="closed"] .closed-playback-slot { grid-area: player; min-width: 0; }
+  .app:not([data-view="focus"])[data-lid="closed"] .mobile-score-splitter { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid { display: contents !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid > .lid-cover { grid-area: layout; display: flex !important; height: 42px !important; min-height: 42px !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open > .lid-tray { display: block !important; position: relative !important; inset: auto !important; grid-area: score; width: 100%; height: 100% !important; min-height: 0 !important; max-height: none !important; overflow: hidden !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray-inner { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: 38px 44px auto minmax(0, 1fr) !important; height: 100%; min-height: 0; padding: 5px 8px !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .mobile-track-sheet-heading { grid-column: 1 / -1; grid-row: 1; display: flex !important; min-height: 38px; margin: 0; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tabs { grid-column: 1 / -1; grid-row: 2; display: flex !important; min-width: 0; margin: 0; padding: 0; overflow-x: auto; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-playback-slot { grid-column: 1 / -1; grid-row: 3; display: block !important; min-height: 44px; overflow: hidden; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray [role="tabpanel"]:not([hidden]) { display: block !important; grid-column: 1 / -1; grid-row: 4; min-height: 0; overflow: auto; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-lid.is-open .lid-tray [role="tabpanel"][hidden] { display: none !important; }
+  .app:not([data-view="focus"])[data-lid="open"] .piano-housing { grid-area: piano !important; min-height: 220px !important; height: 100% !important; padding: 0; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .fallboard { height: 34px !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .keyboard-scroll { height: calc(100% - 90px) !important; min-height: 110px; width: calc(100% - 120px) !important; margin-inline: 60px !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .keys { height: 100% !important; min-height: 110px !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls { position: absolute; inset: 34px 0 42px; display: block; min-height: 0; z-index: 8; pointer-events: none; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button { position: absolute; top: 50%; width: 48px; height: 48px; padding: 0; transform: translateY(-50%); pointer-events: auto; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button[aria-label="降低八度"] { left: 4px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls button[aria-label="提高八度"] { right: 4px; }
+  .app:not([data-view="focus"])[data-stage="playing"] .piano-housing .octave-side-controls span { display: none; }
+  .app:not([data-view="focus"])[data-stage="playing"] .keyboard-tools { grid-area: tools; max-height: 38px; min-height: 30px; overflow: hidden; }
+  .app:not([data-view="focus"])[data-lid="open"] .studio > .mode-row,
+  .app:not([data-view="focus"])[data-lid="open"] .studio > .practice { display: none !important; }
+  .app:not([data-view="focus"])[data-stage="playing"] .studio:has(> .accompaniment-panel) {
+    grid-template-rows: 42px minmax(160px, 1fr) 14px minmax(220px, clamp(220px, 28dvh, calc(100dvh - 550px))) minmax(96px, 150px) auto !important;
+    grid-template-areas: "layout" "score" "splitter" "piano" "accompaniment" "tools" !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .studio > .accompaniment-panel {
+    grid-area: accompaniment; box-sizing: border-box; min-height: 0; max-height: 150px;
+    margin: 0; padding: 6px 8px; overflow: auto; overscroll-behavior: contain;
+  }
+  .app:not([data-view="focus"])[data-mobile-playback-visible="false"] .piano-lid.is-open .lid-playback-slot { display: none !important; }
+  .app:not([data-view="focus"])[data-lid="open"][data-mobile-score-visible="false"] .piano-lid.is-open .music-desk,
+  .app:not([data-view="focus"])[data-mobile-piano-expanded="true"] .piano-lid.is-open .music-desk { display: none !important; }
+  .app:not([data-view="focus"])[data-mobile-piano-expanded="true"] .studio { grid-template-rows: 42px minmax(180px, 1fr) 14px minmax(220px, clamp(220px, var(--mobile-piano-height), calc(100dvh - 450px))) auto !important; }
+  .app:not([data-view="focus"])[data-mobile-piano-expanded="true"] .studio:has(> .accompaniment-panel) {
+    grid-template-rows: 42px minmax(160px, 1fr) 14px minmax(220px, clamp(220px, 28dvh, calc(100dvh - 550px))) minmax(96px, 150px) auto !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"] .mobile-score-splitter { display: flex !important; grid-area: splitter; position: relative !important; inset: auto !important; width: 100%; height: 14px; min-height: 14px; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray-inner { grid-template-rows: 38px 44px minmax(0, 1fr) auto !important; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-tray [role="tabpanel"]:not([hidden]) { grid-row: 3; }
+  .app:not([data-view="focus"])[data-lid-tab="stand"] .piano-lid.is-open .lid-playback-slot { grid-row: 4; min-height: 44px; }
+}
+
+/* Pure keyboard view: preserve the existing piano sizing preferences while
+   giving the playing surface the full safe-area-adjusted viewport. */
+.keyboard-only-exit { display: none !important; }
+.app[data-keyboard-only="true"] {
+  height: 100svh;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.app[data-keyboard-only="true"] > .stage { height: 100%; min-height: 0; overflow: hidden; }
+.app[data-keyboard-only="true"] > .stage > :not(main) { display: none !important; }
+.app[data-keyboard-only="true"] > .stage > main > :not(.studio) { display: none !important; }
+.app[data-keyboard-only="true"] > .stage > header { display: none !important; }
+.app[data-keyboard-only="true"] > .stage > main {
+  display: flex !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  height: 100svh !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px) !important;
+  overflow: hidden !important;
+}
+.app[data-keyboard-only="true"] > .stage > main > .studio {
+  position: relative !important;
+  display: block !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+.app[data-keyboard-only="true"] > .stage > main > .studio > :not(.piano-housing):not(.keyboard-only-exit) {
+  display: none !important;
+}
+.app[data-keyboard-only="true"] .piano-housing {
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+.app[data-keyboard-only="true"] .piano-housing > :not(.keyboard-scroll) { display: none !important; }
+.app[data-keyboard-only="true"] .piano-housing > .keyboard-scroll {
+  flex: 1 1 auto !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.app[data-keyboard-only="true"] .piano-housing > .keyboard-scroll::-webkit-scrollbar { display: none; }
+.app[data-keyboard-only="true"] .piano-housing .keys {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+}
+.app[data-keyboard-only="true"] .keyboard-only-exit {
+  position: fixed !important;
+  z-index: 10000 !important;
+  top: max(6px, env(safe-area-inset-top, 0px)) !important;
+  right: max(6px, env(safe-area-inset-right, 0px)) !important;
+  display: inline-flex !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Specificity guard: the legacy responsive selectors also use !important. */
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing {
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main {
+  box-sizing: border-box !important;
+  max-width: none !important;
+  height: 100svh !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px) !important;
+}
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .keyboard-scroll {
+  position: relative !important;
+  display: block !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .keyboard-scroll > .keys {
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .keyboard-zoom-control,
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .octave-side-controls,
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .fallboard,
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .felt,
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .chord-buttons-slot {
+  display: none !important;
+}
+.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .keyboard-only-exit {
+  position: fixed !important;
+  z-index: 10000 !important;
+  top: max(6px, env(safe-area-inset-top, 0px)) !important;
+  right: max(6px, env(safe-area-inset-right, 0px)) !important;
+  display: inline-flex !important;
+  box-sizing: border-box !important;
+  border: 1px solid #d7bc72 !important;
+  border-radius: 50% !important;
+  background: #151912 !important;
+  color: #f4df9d !important;
+  box-shadow: 0 2px 8px #000b !important;
+}
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > :not(main),
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > :not(.studio),
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .orientation-return,
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > :not(.piano-housing):not(.keyboard-only-exit) {
+  display: none !important;
+}
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .keyboard-zoom-control,
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .octave-side-controls,
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .fallboard,
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .felt,
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .piano-lip,
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .chord-buttons-slot {
+  display: none !important;
+}
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .keyboard-only-exit {
+  display: inline-flex !important;
+}
+
+/* Keep the single touch entry above the adjacent custom slider hit area and
+   avoid the duplicate toolbar entry on small touch layouts. */
+@media (hover: none) and (pointer: coarse) and (max-width: 1023px) {
+  .app[data-stage="playing"] .piano-housing > .keyboard-zoom-control .keyboard-only-entry {
+    order: -1;
+    position: relative !important;
+    z-index: 30 !important;
+    display: inline-flex !important;
+    flex: 0 0 auto;
+    min-width: 64px;
+    min-height: 44px;
+    pointer-events: auto !important;
+    touch-action: manipulation !important;
+  }
+  .app[data-stage="playing"] .keyboard-tools .keyboard-only-entry { display: none !important; }
+}
+
+/* Bound the mobile/tablet lid to one inner viewport: the visible tabpanel is
+   the only vertical scroller, so focus scrolling cannot move the tray itself. */
+@media (max-width: 1023px), (orientation: landscape) and (max-height: 500px) {
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="open"] .piano-lid.is-open .lid-tray-inner {
+    height: 100% !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    overflow: clip !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="open"] .piano-lid.is-open .lid-tray [role="tabpanel"]:not([hidden]) {
+    display: block !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+  }
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="open"] .piano-lid.is-open .lid-tray [role="tabpanel"] .music-desk {
+    min-height: 0 !important;
+    max-height: 100% !important;
+  }
+}
+
+/* The desktop lid used a fixed 358px tray budget, which overflows shorter
+   landscape tablets. Keep its score readable while returning height to keys. */
+@media (min-width: 1024px) and (orientation: landscape) and (max-height: 820px) {
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="open"] .grand-piano-lid .lid-tray {
+    height: clamp(160px, calc(100dvh - 560px), 358px) !important;
+    min-height: 160px !important;
+    max-height: clamp(160px, calc(100dvh - 560px), 358px) !important;
+  }
+}
+
+/* Pure keyboard is a temporary presentation layer and may coexist with focus
+   or a stale rotation flag. Keep only the piano and its exit affordance. */
+.app.app[data-keyboard-only="true"] > .stage > main > .studio > .focus-toolbar,
+.app.app[data-keyboard-only="true"] > .stage > main > .studio > .piano-lid,
+.app.app[data-keyboard-only="true"] > .stage > main > .studio > .closed-playback-slot,
+.app.app[data-keyboard-only="true"] .lid-playback-slot,
+.app.app[data-keyboard-only="true"] > .orientation-return {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+.app.app[data-keyboard-only="true"] > .stage {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  transform: none !important;
+  transform-origin: initial !important;
+}
+.app.app[data-keyboard-only="true"] > .stage > main {
+  width: 100% !important;
+  height: 100% !important;
+}

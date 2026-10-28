@@ -17,6 +17,9 @@ export class LiveRecorder {
     this.recording = true;
     this.onChange();
   }
+  elapsed() {
+    return this.recording ? Math.max(0, this.clock() - this.origin) : this.duration;
+  }
   attack(id: string, midi: number, velocity: number) {
     if (!this.recording || this.held.has(id)) return;
     this.held.set(id, { midi, time: this.clock() - this.origin, velocity });

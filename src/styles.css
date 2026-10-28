@@ -950,6 +950,42 @@ footer > span:first-child {
   color: var(--muted);
   line-height: 1.8;
 }
+.mapping-guide {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--gold) 7%, var(--surface));
+  font-size: 12px;
+}
+.mapping-guide strong {
+  color: var(--gold);
+  font-size: 13px;
+}
+.mapping-guide span {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.mapping-guide.is-active {
+  background: color-mix(in srgb, var(--gold) 13%, var(--surface));
+}
+.mapping-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+}
+.mapping-conflict-actions .primary {
+  color: #15140f;
+  background: var(--gold);
+}
+.mapping-status {
+  min-height: 1.6em;
+  margin: 9px 0;
+}
 .mapping-grid {
   display: grid;
   grid-template-columns: repeat(11, 1fr);
@@ -970,6 +1006,11 @@ footer > span:first-child {
 .mapping-grid .selected {
   border-color: var(--gold);
   color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 18px #c9b27a2b;
+}
+.mapping-grid button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 .modal-actions {
   display: flex;
@@ -1744,7 +1785,7 @@ footer > span:first-child {
   background: #e8e3d5;
   box-shadow: inset 0 1px 8px #0003;
 }
-.music-desk:has(.roll) .visual-area {
+.music-desk:has(.roll-focus-content:not([hidden])) .visual-area {
   background: #121910;
 }
 .music-desk .roll {
@@ -1957,6 +1998,13 @@ footer > span:first-child {
 .score-paper-host[hidden] {
   display: none;
 }
+.sheet-host {
+  height: 100%;
+}
+.sheet-host[hidden],
+.roll-focus-content[hidden] {
+  display: none !important;
+}
 .place-score:hover {
   color: #655534;
   background: linear-gradient(100deg, #eee8d9, #fffaf0 45%, #e6ddc9);
@@ -2101,7 +2149,7 @@ footer > span:first-child {
 }
 
 /* Responsive device rules: tablet first, then phone. */
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   header {
     padding: 0 25px;
   }
@@ -2910,6 +2958,30 @@ footer > span:first-child {
 /* Compact landscape keyboard-first layout. Keep this final so responsive
    overrides cannot leave the score panel behind after the toggle changes. */
 @media (orientation: landscape) and (max-height: 500px) {
+  .app[data-stage="playing"] {
+    height: 100svh;
+    height: 100dvh;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+  .app[data-stage="playing"] > .stage {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .app[data-stage="playing"][data-lid="open"] > .stage > main {
+    height: 100%;
+    min-height: 0;
+  }
+  .app[data-stage="playing"][data-lid="closed"] > .stage > main {
+    height: calc(100% - 50px);
+    min-height: 0;
+  }
+  .app[data-stage="playing"] .studio {
+    height: 100%;
+    min-height: 0;
+  }
   .app[data-lid="open"][data-mobile-piano-expanded="true"] .studio {
     grid-template-areas: "layout" "player" "piano" !important;
     grid-template-rows: 40px 44px minmax(0, 1fr) !important;
@@ -3043,7 +3115,7 @@ footer > span:first-child {
 .studio > .stage-prompt {
   display: none;
 }
-.app[data-lid="closed"] .studio > :not(.piano-lid):not(.piano-housing):not(.stage-prompt):not(.keyboard-tools):not(.closed-playback-slot) {
+.app[data-lid="closed"]:not([data-view="focus"]) .studio > :not(.piano-lid):not(.piano-housing):not(.stage-prompt):not(.keyboard-tools):not(.closed-playback-slot) {
   display: none !important;
 }
 .app[data-lid="closed"] .studio > .keyboard-tools,
@@ -5225,7 +5297,6 @@ html[data-rotate="true"] body {
 .app[data-view="focus"] .piano-housing > .fallboard,
 .app[data-view="focus"] .piano-housing > .felt,
 .app[data-view="focus"] .piano-housing > .chord-buttons-slot,
-.app[data-view="focus"] .piano-housing > .keyboard-zoom-control,
 .app[data-view="focus"] .piano-housing > .octave-side-controls,
 .app[data-view="focus"] .piano-housing > .piano-lip,
 .app[data-view="focus"] .closed-playback-slot,
@@ -5298,7 +5369,7 @@ html[data-rotate="true"] body {
   .focus-leave { width: 40px; padding: 2px !important; }
   .focus-leave > span:last-child { display: none; }
   .focus-song-title { flex: 1 1 60px; font-size: 11px; }
-  .focus-more-toggle { display: inline-flex !important; width: 36px; min-width: 36px; padding: 0 !important; font-size: 22px; }
+  .focus-more-toggle { display: inline-flex !important; width: auto; min-width: 64px; padding: 0 9px !important; font-size: 12px; }
   .focus-more-controls { display: none; }
   .focus-more-open .focus-more-controls {
     position: absolute;
@@ -5411,6 +5482,9 @@ html[data-rotate="true"] body {
   border: 0 !important;
   overflow: hidden !important;
 }
+.app[data-view="focus"] > .stage > main > .studio .roll-focus-content[hidden] {
+  display: none !important;
+}
 .app[data-view="focus"] > .stage > main > .studio .roll-focus-content > .roll {
   display: block !important;
   box-sizing: border-box !important;
@@ -5504,6 +5578,27 @@ html[data-rotate="true"] body {
 
 /* Final mobile geometry overrides. */
 @media (max-width: 767px) {
+  .app[data-stage="playing"] {
+    height: 100svh;
+    height: 100dvh;
+    min-height: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+  .app[data-stage="playing"] > .stage {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .app[data-stage="playing"] > .stage > main {
+    height: calc(100% - 46px);
+    min-height: 0;
+    overflow: hidden;
+  }
+  .app[data-stage="playing"] .studio {
+    height: 100%;
+    min-height: 0;
+  }
   .app[data-lid="open"] .studio {
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas: "layout" "player" "score" "splitter" "piano" "tools" "modes" "chords" "accompaniment" !important;
@@ -5517,6 +5612,13 @@ html[data-rotate="true"] body {
     height: min(82dvh, 740px) !important;
     max-height: calc(100dvh - var(--safe-top)) !important;
     transform: none !important;
+  }
+  .app[data-lid="open"] .piano-lid .lid-tray [role="tabpanel"]:not([hidden]) {
+    overflow: visible !important;
+  }
+  .app[data-lid="open"][data-lid-tab="chord"] .chord-panel-grid {
+    max-height: none !important;
+    overflow: visible !important;
   }
 }
 @media (orientation: landscape) and (max-height: 500px) {
@@ -5703,4 +5805,257 @@ html[data-rotate="true"] body {
   .accompaniment-heading { flex-direction: column; }
   .accompaniment-shortcuts { width: 100%; }
   .accompaniment-shortcuts button { flex: 1; }
+}
+
+/* Mobile players can size the keys and decide whether horizontal swipes browse. */
+.orientation-toggle { display: none; }
+.orientation-return { display: none; }
+@media (hover: none) and (pointer: coarse) and (max-width: 767px) {
+  .orientation-toggle {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    border: 1px solid #746442;
+    border-radius: 999px;
+    background: #171a15;
+    color: #d9c894;
+    font-size: 12px;
+    touch-action: manipulation;
+  }
+  .orientation-return {
+    position: fixed;
+    z-index: 1300;
+    top: max(8px, env(safe-area-inset-top, 0px));
+    right: max(8px, env(safe-area-inset-right, 0px));
+    display: inline-flex;
+    min-width: 56px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border: 1px solid #c9b788;
+    border-radius: 999px;
+    background: #11150fee;
+    color: #f0dda9;
+    box-shadow: 0 3px 14px #0008;
+    touch-action: manipulation;
+  }
+  .orientation-toggle[aria-pressed="true"] {
+    border-color: #c9b788;
+    background: #c9b78822;
+  }
+  .app[data-lid="open"] .piano-housing > .keyboard-zoom-control {
+    display: flex !important;
+    flex: 0 0 auto;
+    min-height: 44px;
+    gap: 7px;
+    padding-inline: 4px;
+    overflow: visible;
+    font-size: 10px;
+  }
+  .app[data-lid="open"] .keyboard-zoom-control .stage-slider {
+    flex: 1 1 100px;
+    width: auto;
+    min-width: 88px;
+    max-width: 260px;
+    touch-action: none;
+  }
+  .keyboard-swipe-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    min-width: 58px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border: 1px solid #746442;
+    border-radius: 8px;
+    color: #c6b987;
+    background: #171a15;
+    font-size: 10px;
+    touch-action: manipulation;
+  }
+  .keyboard-zoom-preset,
+  .keyboard-focus-toggle {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  .keyboard-swipe-toggle[aria-pressed="true"] {
+    border-color: #c9b788;
+    color: #171812;
+    background: linear-gradient(145deg, #d1bc82, #9e8753);
+  }
+  .app[data-view="focus"] .piano-housing > .keyboard-zoom-control {
+    display: flex !important;
+    flex: 0 0 auto;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding-inline: 4px;
+  }
+  .app[data-view="focus"] .piano-housing > .keyboard-scroll {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+}
+@media (hover: none) and (pointer: coarse) and (max-width: 420px) {
+  .app[data-lid="open"] .piano-housing > .keyboard-zoom-control { gap: 4px; }
+  .app[data-lid="open"] .keyboard-zoom-control > span { font-size: 9px; }
+  .app[data-lid="open"] .keyboard-zoom-control .keyboard-zoom-preset { min-width: 40px; padding-inline: 5px; }
+  .app[data-lid="open"] .keyboard-zoom-control .keyboard-focus-toggle { min-width: 70px; padding-inline: 5px; font-size: 9px; }
+  .app[data-lid="open"] .keyboard-zoom-control .stage-slider { min-width: 64px; }
+  .keyboard-swipe-toggle { min-width: 50px; padding-inline: 5px; }
+}
+
+/* Mobile panels are independently controllable: close the piano lid to hide
+   tools, and use this switch to hide only the score area. */
+.mobile-score-toggle { display: none; }
+@media (max-width: 767px) {
+  .mobile-track-sheet-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+  }
+  .piano-lid.is-open .mobile-track-sheet-actions .mobile-score-sheet-toggle {
+    width: auto;
+    min-width: 82px;
+    height: 40px;
+    padding: 0 10px;
+    border: 1px solid #746442;
+    border-radius: 8px;
+    color: #d5c18a;
+    background: #171a15;
+    font-size: 11px;
+    white-space: nowrap;
+    touch-action: manipulation;
+  }
+  .piano-lid.is-open .mobile-track-sheet-actions .mobile-score-sheet-toggle[aria-pressed="true"] {
+    color: #171812;
+    background: linear-gradient(145deg, #d1bc82, #9e8753);
+  }
+  .piano-lid.is-open .mobile-track-sheet-actions .mobile-playback-sheet-toggle {
+    width: auto;
+    min-width: 78px;
+    height: 40px;
+    padding: 0 8px;
+    border: 1px solid #746442;
+    border-radius: 8px;
+    color: #d5c18a;
+    background: #171a15;
+    font-size: 11px;
+    white-space: nowrap;
+    touch-action: manipulation;
+  }
+  .piano-lid.is-open .mobile-track-sheet-actions .mobile-playback-sheet-toggle[aria-pressed="true"] {
+    color: #171812;
+    background: linear-gradient(145deg, #d1bc82, #9e8753);
+  }
+  .mobile-playback-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    min-width: 64px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 5px;
+    border: 1px solid #746442;
+    border-radius: 8px;
+    color: #d5c18a;
+    background: #171a15;
+    font-size: 9px;
+    white-space: nowrap;
+    touch-action: manipulation;
+  }
+  .mobile-playback-toggle[aria-pressed="true"] {
+    color: #171812;
+    background: linear-gradient(145deg, #d1bc82, #9e8753);
+  }
+  .app[data-mobile-playback-visible="false"] .closed-playback-slot,
+  .app[data-mobile-playback-visible="false"] .lid-playback-slot {
+    display: none !important;
+  }
+  .app[data-mobile-playback-visible="false"][data-lid="closed"][data-stage="playing"] .closed-playback-slot:has(.player.player-mini[data-visible="true"]),
+  .app[data-mobile-playback-visible="false"][data-lid="open"] .lid-playback-slot {
+    display: none !important;
+  }
+  .app[data-stage="playing"][data-lid="closed"] .piano-housing > .keyboard-zoom-control {
+    display: flex !important;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 4px;
+    overflow-x: auto;
+    font-size: 10px;
+  }
+  .app[data-stage="playing"][data-lid="closed"] .keyboard-zoom-control .stage-slider {
+    flex: 1 1 72px;
+    width: auto;
+    min-width: 58px;
+    max-width: 180px;
+  }
+  .app[data-stage="playing"][data-lid="closed"] .keyboard-zoom-control .keyboard-zoom-preset {
+    display: none !important;
+  }
+  .app[data-stage="playing"][data-lid="closed"] .keyboard-zoom-control > span {
+    display: none;
+  }
+  .app[data-stage="playing"][data-lid="closed"] .keyboard-zoom-control .keyboard-focus-toggle {
+    display: none !important;
+  }
+  .app[data-stage="playing"][data-lid="closed"] .keyboard-swipe-toggle {
+    min-width: 54px;
+    padding-inline: 4px;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+  .app[data-stage="playing"][data-lid="closed"] .mobile-score-toggle,
+  .app[data-stage="playing"][data-lid="closed"] .mobile-playback-toggle { min-width: 64px; padding-inline: 4px; font-size: 9px; }
+  .mobile-score-toggle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    min-width: 72px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+    border: 1px solid #746442;
+    border-radius: 8px;
+    color: #d5c18a;
+    background: #171a15;
+    font-size: 10px;
+    touch-action: manipulation;
+  }
+  .mobile-score-toggle[aria-pressed="false"] {
+    color: #171812;
+    background: linear-gradient(145deg, #d1bc82, #9e8753);
+  }
+  .app[data-lid="open"][data-lid-tab="stand"][data-mobile-score-visible="false"] .grand-workbench > .music-desk {
+    display: none !important;
+  }
+  .app[data-lid="open"][data-mobile-score-visible="true"] .grand-workbench {
+    display: flex !important;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .app[data-lid="open"][data-mobile-score-visible="true"] .grand-workbench > .music-desk {
+    display: block !important;
+    order: 1;
+  }
+  .app[data-lid="open"][data-mobile-score-visible="true"] .grand-workbench > .midi-desk {
+    display: block !important;
+    order: 2;
+  }
+  .app[data-lid="open"][data-mobile-score-visible="true"] .grand-workbench > .stand-mode-controls {
+    order: 0;
+  }
+  .app[data-lid="open"][data-mobile-score-visible="true"] .music-desk .visual-area {
+    height: clamp(140px, 36dvh, 360px) !important;
+    min-height: 140px;
+  }
 }

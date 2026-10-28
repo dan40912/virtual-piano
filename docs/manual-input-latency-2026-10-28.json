@@ -1,0 +1,50 @@
+[
+  {
+    "level": "debug",
+    "message": "Manual piano input → attack {\"elapsedMs\":2.2,\"baseLatencyMs\":10,\"outputLatencyMs\":null}",
+    "timestamp": "2026-10-28T00:45:24.685Z",
+    "url": "http://127.0.0.1:4173/src/App.tsx?t=1793148305598"
+  },
+  {
+    "level": "debug",
+    "message": "Manual piano input → attack {\"elapsedMs\":1,\"baseLatencyMs\":10,\"outputLatencyMs\":null}",
+    "timestamp": "2026-10-28T00:45:24.851Z",
+    "url": "http://127.0.0.1:4173/src/App.tsx?t=1793148305598"
+  },
+  {
+    "level": "debug",
+    "message": "Manual piano input → attack {\"elapsedMs\":0.8,\"baseLatencyMs\":10,\"outputLatencyMs\":null}",
+    "timestamp": "2026-10-28T00:45:24.977Z",
+    "url": "http://127.0.0.1:4173/src/App.tsx?t=1793148305598"
+  },
+  {
+    "level": "debug",
+    "message": "Manual piano input → attack {\"elapsedMs\":0.9,\"baseLatencyMs\":10,\"outputLatencyMs\":null}",
+    "timestamp": "2026-10-28T00:45:25.090Z",
+    "url": "http://127.0.0.1:4173/src/App.tsx?t=1793148305598"
+  },
+  {
+    "level": "debug",
+    "message": "Manual piano input → attack {\"elapsedMs\":0.9,\"baseLatencyMs\":10,\"outputLatencyMs\":null}",
+    "timestamp": "2026-10-28T00:45:25.128Z",
+    "url": "http://127.0.0.1:4173/src/App.tsx?t=1793148305598"
+  },
+  {
+    "level": "debug",
+    "message": "Manual piano input → attack {\"elapsedMs\":0.8,\"baseLatencyMs\":10,\"outputLatencyMs\":null}",
+    "timestamp": "2026-10-28T00:45:25.167Z",
+    "url": "http://127.0.0.1:4173/src/App.tsx?t=1793148305598"
+  },
+  {
+    "level": "debug",
+    "message": "Manual piano input → attack {\"elapsedMs\":1,\"baseLatencyMs\":10,\"outputLatencyMs\":null}",
+    "timestamp": "2026-10-28T00:45:25.205Z",
+    "url": "http://127.0.0.1:4173/src/App.tsx?t=1793148305598"
+  },
+  {
+    "level": "debug",
+    "message": "Manual piano input → attack {\"elapsedMs\":0.6,\"baseLatencyMs\":10,\"outputLatencyMs\":null}",
+    "timestamp": "2026-10-28T00:45:25.241Z",
+    "url": "http://127.0.0.1:4173/src/App.tsx?t=1793148305598"
+  }
+]

@@ -3,7 +3,9 @@ vi.mock("tone", () => ({
   Frequency: (n: number) => ({ toFrequency: () => n }),
   now: () => 0,
   immediate: () => 0,
+  getContext: vi.fn(),
 }));
+import * as Tone from "tone";
 import { PianoEngine } from "./PianoEngine";
 describe("sample engine note ownership and sustain", () => {
   let engine: PianoEngine;
@@ -88,6 +90,25 @@ describe("sample engine note ownership and sustain", () => {
     }
     expect(sampler.triggerAttack).toHaveBeenCalledTimes(20);
     expect(sampler.triggerRelease).toHaveBeenCalledTimes(20);
+  });
+  it("records from the existing output and releases only its own audio tap", async () => {
+    const stop = vi.fn();
+    const destination = { stream: { getTracks: () => [{ stop }] } };
+    const connect = vi.fn();
+    const disconnect = vi.fn();
+    engine.gain = { connect, disconnect } as never;
+    vi.spyOn(engine, "ready").mockResolvedValue();
+    vi.mocked(Tone.getContext).mockReturnValue({
+      rawContext: { createMediaStreamDestination: () => destination },
+    } as never);
+    const tap = await engine.createRecordingStream();
+    expect(connect).toHaveBeenCalledWith(destination);
+    expect(tap.stream).toBe(destination.stream);
+    tap.dispose();
+    tap.dispose();
+    expect(disconnect).toHaveBeenCalledExactlyOnceWith(destination);
+    expect(stop).toHaveBeenCalledOnce();
+    expect(engine.sampler).toBe(sampler);
   });
   it("routes voice presets to actual filter, sampler envelope and velocity", () => {
     const ramp = vi.fn();

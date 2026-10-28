@@ -1,0 +1,184 @@
+[
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 844,
+    "keys": {
+      "height": 844,
+      "width": 320,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 320
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 812,
+    "keys": {
+      "height": 812,
+      "width": 375,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 375
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 844,
+    "keys": {
+      "height": 844,
+      "width": 390,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 390
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 932,
+    "keys": {
+      "height": 932,
+      "width": 430,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 430
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 375,
+    "keys": {
+      "height": 375,
+      "width": 667,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 667
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 390,
+    "keys": {
+      "height": 390,
+      "width": 844,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 844
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 430,
+    "keys": {
+      "height": 430,
+      "width": 932,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 932
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 1024,
+    "keys": {
+      "height": 1024,
+      "width": 768,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 768
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 1180,
+    "keys": {
+      "height": 1180,
+      "width": 820,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 820
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 768,
+    "keys": {
+      "height": 768,
+      "width": 1024,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 1024
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 820,
+    "keys": {
+      "height": 820,
+      "width": 1180,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 1180
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 1024,
+    "keys": {
+      "height": 1024,
+      "width": 1366,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 1366
+  },
+  {
+    "controls": [
+      "退出純鍵盤模式並返回原畫面"
+    ],
+    "h": 900,
+    "keys": {
+      "height": 900,
+      "width": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "overflow": false,
+    "w": 1440
+  }
+]

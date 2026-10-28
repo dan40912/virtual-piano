@@ -1,0 +1,26 @@
+.focus-toolbar .recording-live-badge {
+  position: static;
+  flex: 0 0 auto;
+  transform: none;
+}
+
+.keyboard-zoom-control > .recording-live-badge {
+  display: none;
+}
+
+@media (max-width: 430px) {
+  .focus-toolbar:has(.recording-live-badge) .focus-song-title {
+    display: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .app:not([data-view="focus"]) .keyboard-zoom-control > .recording-live-badge {
+    position: static;
+    display: inline-flex;
+    flex: 0 0 auto;
+    transform: none;
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+}

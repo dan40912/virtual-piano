@@ -1,0 +1,50 @@
+.chord-panel .chord-heading .chord-toggle {
+  min-height: 40px;
+  padding: 8px 15px;
+  border: 1px solid var(--gold);
+  border-radius: 7px;
+  color: #17140e;
+  background: var(--gold);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chord-panel .chord-heading .chord-toggle.is-enabled {
+  color: var(--text, #f5f0e2);
+  background: var(--surface);
+}
+.chord-panel .chord-heading .chord-toggle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.chord-panel-grid.is-preview {
+  display: block;
+  margin-top: 12px;
+}
+.chord-panel-grid.is-preview .chord-pad:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.chord-panel .chord-control {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  color: var(--muted);
+}
+.chord-panel .chord-control select {
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text, #f5f0e2);
+  background: var(--surface);
+  font: inherit;
+}
+.chord-panel .chord-current-config {
+  display: block;
+  color: var(--gold);
+}
+.chord-panel .chord-control select:focus-visible {
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+}

@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { isBlack, noteName } from "../music/model";
+import { keyLabel } from "../music/chords";
 import { player } from "../audio/PlaybackScheduler";
 export const Piano = memo(function Piano({
   count,
@@ -22,6 +23,9 @@ export const Piano = memo(function Piano({
   scrollPosition,
   onBounds,
   visibleWhiteKeys = 18,
+  swipeScrollEnabled = false,
+  chordMapping = {},
+  chordEnabled = false,
   rotate = false,
 }: {
   count: number;
@@ -37,6 +41,9 @@ export const Piano = memo(function Piano({
   scrollPosition: number;
   onBounds: (max: number) => void;
   visibleWhiteKeys?: number;
+  swipeScrollEnabled?: boolean;
+  chordMapping?: Record<string, string>;
+  chordEnabled?: boolean;
   rotate?: boolean;
 }) {
   const start = count === 88 ? 21 : 36;
@@ -51,6 +58,15 @@ export const Piano = memo(function Piano({
     for (const [key, midi] of Object.entries(mapping)) reverse.set(midi, key);
     return reverse;
   }, [mapping]);
+  const chordOverrideByMidi = useMemo(() => {
+    const overrides = new Map<number, { key: string; chord: string }>();
+    if (!chordEnabled) return overrides;
+    for (const [key, chord] of Object.entries(chordMapping)) {
+      if (mapping[key] !== undefined)
+        overrides.set(mapping[key], { key, chord });
+    }
+    return overrides;
+  }, [chordEnabled, chordMapping, mapping]);
   const scheduledActive = useSyncExternalStore(
     player.subscribeActiveNotes,
     player.getActiveNotesSnapshot,
@@ -97,8 +113,11 @@ export const Piano = memo(function Piano({
       const compactLayout = window.matchMedia(
         "(max-width: 767px), (orientation: landscape) and (max-height: 500px)",
       ).matches;
+      const touchDevice = window.matchMedia(
+        "(hover: none) and (pointer: coarse)",
+      ).matches;
       const logicalWidth = root.clientWidth;
-      const nextWidth = mobileLandscape
+      const nextWidth = mobileLandscape || touchDevice
         ? logicalWidth > 0
           ? Math.max(14, logicalWidth / visibleWhiteKeys)
           : 29
@@ -143,7 +162,10 @@ export const Piano = memo(function Piano({
     >
       <div
         className="keys"
-        style={{ width: `max(100%, ${whites.length * whiteKeyWidth.current}px)` }}
+        style={{
+          width: `max(100%, ${whites.length * whiteKeyWidth.current}px)`,
+          touchAction: swipeScrollEnabled ? "pan-x" : "none",
+        }}
         onPointerDown={(e) => {
           const key = (e.target as HTMLElement).closest<HTMLElement>(
             "[data-midi]",
@@ -154,6 +176,7 @@ export const Piano = memo(function Piano({
             onSelect(n);
             return;
           }
+          if (swipeScrollEnabled) return;
           try {
             e.currentTarget.setPointerCapture(e.pointerId);
           } catch {
@@ -188,22 +211,25 @@ export const Piano = memo(function Piano({
           const black = isBlack(n);
           const wi = whites.filter((w) => w < n).length;
           const width = 100 / whites.length;
+          const chordOverride = chordOverrideByMidi.get(n);
+          const binding = bindingByMidi.get(n) || "";
           return (
             <button
               type="button"
               tabIndex={-1}
-              aria-label={noteName(n)}
-              title={`${noteName(n)} · ${shortcutLabel(bindingByMidi.get(n) || "未綁定")}`}
+              aria-label={chordOverride ? `${noteName(n)}；${keyLabel(chordOverride.key)} 鍵目前演奏 ${chordOverride.chord} 和弦` : noteName(n)}
+              title={chordOverride ? `${noteName(n)} · ${keyLabel(chordOverride.key)} 目前演奏 ${chordOverride.chord} 和弦` : `${noteName(n)} · ${shortcutLabel(binding || "未綁定")}`}
               key={n}
               data-midi={n}
               className={`piano-key ${black ? "black" : "white"} ${bindingByMidi.has(n) ? "mapped" : ""} ${visibleActive.has(n) ? "pressed" : ""} ${expected.includes(n) ? "expected" : ""}`}
               style={{
                 left: `${(wi - (black ? 0.32 : 0)) * width}%`,
                 width: `${width * (black ? 0.64 : 1)}%`,
+                touchAction: swipeScrollEnabled ? "pan-x" : "none",
               }}
             >
               <span className="key-binding">
-                {shortcutLabel(bindingByMidi.get(n) || "")}
+                {chordOverride ? `♬${keyLabel(chordOverride.key)}` : shortcutLabel(binding)}
               </span>
               <span className="note-label">{noteName(n)}</span>
             </button>

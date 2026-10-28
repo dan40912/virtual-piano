@@ -1,0 +1,224 @@
+[
+  {
+    "label": "score and player visible",
+    "height": 800,
+    "keys": {
+      "h": 273,
+      "w": 254,
+      "x": 53,
+      "y": 417
+    },
+    "overflow": false,
+    "player": {
+      "h": 44,
+      "w": 344,
+      "x": 13,
+      "y": 318
+    },
+    "score": {
+      "h": 423,
+      "w": 334,
+      "x": 13,
+      "y": 251
+    },
+    "state": {
+      "chordEnabled": "false",
+      "keyboardOnly": "false",
+      "lid": "open",
+      "lidTab": "stand",
+      "mobilePianoExpanded": "false",
+      "mobilePlaybackVisible": "true",
+      "mobileScoreVisible": "true",
+      "rotate": "false",
+      "stage": "playing",
+      "urlInput": "false",
+      "view": "studio"
+    },
+    "width": 360
+  },
+  {
+    "label": "score hidden",
+    "height": 800,
+    "keys": {
+      "h": 273,
+      "w": 254,
+      "x": 53,
+      "y": 417
+    },
+    "overflow": false,
+    "player": {
+      "h": 44,
+      "w": 344,
+      "x": 13,
+      "y": 318
+    },
+    "score": {
+      "h": 0,
+      "w": 0,
+      "x": 0,
+      "y": 0
+    },
+    "state": {
+      "chordEnabled": "false",
+      "keyboardOnly": "false",
+      "lid": "open",
+      "lidTab": "stand",
+      "mobilePianoExpanded": "false",
+      "mobilePlaybackVisible": "true",
+      "mobileScoreVisible": "false",
+      "rotate": "false",
+      "stage": "playing",
+      "urlInput": "false",
+      "view": "studio"
+    },
+    "width": 360
+  },
+  {
+    "label": "score and player hidden",
+    "height": 800,
+    "keys": {
+      "h": 273,
+      "w": 254,
+      "x": 53,
+      "y": 417
+    },
+    "overflow": false,
+    "player": {
+      "h": 0,
+      "w": 0,
+      "x": 0,
+      "y": 0
+    },
+    "score": {
+      "h": 0,
+      "w": 0,
+      "x": 0,
+      "y": 0
+    },
+    "state": {
+      "chordEnabled": "false",
+      "keyboardOnly": "false",
+      "lid": "open",
+      "lidTab": "stand",
+      "mobilePianoExpanded": "false",
+      "mobilePlaybackVisible": "false",
+      "mobileScoreVisible": "false",
+      "rotate": "false",
+      "stage": "playing",
+      "urlInput": "false",
+      "view": "studio"
+    },
+    "width": 360
+  },
+  {
+    "label": "lid closed both hidden",
+    "height": 800,
+    "keys": {
+      "h": 614,
+      "w": 254,
+      "x": 53,
+      "y": 133
+    },
+    "overflow": false,
+    "player": {
+      "h": 0,
+      "w": 0,
+      "x": 0,
+      "y": 0
+    },
+    "score": {
+      "h": 0,
+      "w": 0,
+      "x": 0,
+      "y": 0
+    },
+    "state": {
+      "chordEnabled": "false",
+      "keyboardOnly": "false",
+      "lid": "closed",
+      "lidTab": "stand",
+      "mobilePianoExpanded": "false",
+      "mobilePlaybackVisible": "false",
+      "mobileScoreVisible": "false",
+      "rotate": "false",
+      "stage": "playing",
+      "urlInput": "false",
+      "view": "studio"
+    },
+    "width": 360
+  },
+  {
+    "label": "sound tools with score and player hidden",
+    "height": 800,
+    "keys": {
+      "h": 273,
+      "w": 254,
+      "x": 53,
+      "y": 417
+    },
+    "overflow": false,
+    "player": {
+      "h": 0,
+      "w": 0,
+      "x": 0,
+      "y": 0
+    },
+    "score": {
+      "h": 0,
+      "w": 0,
+      "x": 0,
+      "y": 0
+    },
+    "state": {
+      "chordEnabled": "false",
+      "keyboardOnly": "false",
+      "lid": "open",
+      "lidTab": "sound",
+      "mobilePianoExpanded": "false",
+      "mobilePlaybackVisible": "false",
+      "mobileScoreVisible": "false",
+      "rotate": "false",
+      "stage": "playing",
+      "urlInput": "false",
+      "view": "studio"
+    },
+    "width": 360
+  },
+  {
+    "label": "restored visible with sound retained",
+    "height": 800,
+    "keys": {
+      "h": 273,
+      "w": 254,
+      "x": 53,
+      "y": 417
+    },
+    "overflow": false,
+    "player": {
+      "h": 44,
+      "w": 344,
+      "x": 13,
+      "y": 318
+    },
+    "score": {
+      "h": 423,
+      "w": 334,
+      "x": 13,
+      "y": 343
+    },
+    "state": {
+      "chordEnabled": "false",
+      "keyboardOnly": "false",
+      "lid": "open",
+      "lidTab": "stand",
+      "mobilePianoExpanded": "false",
+      "mobilePlaybackVisible": "true",
+      "mobileScoreVisible": "true",
+      "rotate": "false",
+      "stage": "playing",
+      "urlInput": "false",
+      "view": "studio"
+    },
+    "width": 360
+  }
+]

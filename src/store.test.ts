@@ -12,14 +12,30 @@ it("persists custom mappings and multiple profiles and restores after reload", a
     lidHintSeen: true,
     mobileScoreSplit: 0.46,
     visibleWhiteKeys: 21,
+    keyboardSwipeScroll: true,
+    mobileOrientation: "landscape",
+    mobileStageLayout: "performance",
+    mobileScoreVisible: false,
+    mobilePlaybackVisible: false,
+    largeKeyLabels: true,
+    highContrast: true,
+    notePalette: "accessible",
   });
   const saved = JSON.parse(localStorage.getItem("piano-studio-settings-v1")!);
   expect(saved.state.mapping).toEqual({ KeyZ: 60, KeyX: 62 });
   expect(saved.state.profiles.practice.KeyZ).toBe(60);
   expect(saved.state.lidHintSeen).toBe(true);
-  expect(saved.version).toBe(8);
+  expect(saved.version).toBe(14);
+  expect(saved.state.largeKeyLabels).toBe(true);
+  expect(saved.state.highContrast).toBe(true);
+  expect(saved.state.notePalette).toBe("accessible");
   expect(saved.state.mobileScoreSplit).toBe(0.46);
   expect(saved.state.visibleWhiteKeys).toBe(21);
+  expect(saved.state.keyboardSwipeScroll).toBe(true);
+  expect(saved.state.mobileOrientation).toBe("landscape");
+  expect(saved.state.mobileStageLayout).toBe("performance");
+  expect(saved.state.mobileScoreVisible).toBe(false);
+  expect(saved.state.mobilePlaybackVisible).toBe(false);
   vi.resetModules();
   const reloaded = await import("./store");
   expect(reloaded.useSettings.getState().mapping.KeyX).toBe(62);
@@ -27,6 +43,14 @@ it("persists custom mappings and multiple profiles and restores after reload", a
   expect(reloaded.useSettings.getState().lidHintSeen).toBe(true);
   expect(reloaded.useSettings.getState().mobileScoreSplit).toBe(0.46);
   expect(reloaded.useSettings.getState().visibleWhiteKeys).toBe(21);
+  expect(reloaded.useSettings.getState().keyboardSwipeScroll).toBe(true);
+  expect(reloaded.useSettings.getState().mobileOrientation).toBe("landscape");
+  expect(reloaded.useSettings.getState().mobileStageLayout).toBe("performance");
+  expect(reloaded.useSettings.getState().mobileScoreVisible).toBe(false);
+  expect(reloaded.useSettings.getState().mobilePlaybackVisible).toBe(false);
+  expect(reloaded.useSettings.getState().largeKeyLabels).toBe(true);
+  expect(reloaded.useSettings.getState().highContrast).toBe(true);
+  expect(reloaded.useSettings.getState().notePalette).toBe("accessible");
   localStorage.setItem(
     "piano-studio-settings-v1",
     JSON.stringify({
@@ -44,6 +68,11 @@ it("persists custom mappings and multiple profiles and restores after reload", a
   expect(migrated.useSettings.getState().mapping.KeyJ).toBe(71);
   expect(migrated.useSettings.getState().mapping.KeyP).toBe(75);
   expect(migrated.useSettings.getState().visibleWhiteKeys).toBe(18);
+  expect(migrated.useSettings.getState().keyboardSwipeScroll).toBe(false);
+  expect(migrated.useSettings.getState().mobileOrientation).toBe("portrait");
+  expect(migrated.useSettings.getState().mobileStageLayout).toBe("auto");
+  expect(migrated.useSettings.getState().mobileScoreVisible).toBe(true);
+  expect(migrated.useSettings.getState().mobilePlaybackVisible).toBe(true);
   expect(Object.keys(migrated.useSettings.getState().mapping)).not.toContain(
     "Shift+KeyA",
   );
