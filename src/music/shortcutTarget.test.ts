@@ -6,13 +6,15 @@ function target({
   type = "text",
   editable = false,
   control = false,
-}: { input?: boolean; type?: string; editable?: boolean; control?: boolean } = {}) {
+  shortcutsBlocked = false,
+}: { input?: boolean; type?: string; editable?: boolean; control?: boolean; shortcutsBlocked?: boolean } = {}) {
   return {
     tagName: input ? "INPUT" : undefined,
     type,
     matches: (selector: string) => input && selector.includes("input"),
     closest: (selector: string) => {
       if (selector.includes("contenteditable") && editable) return {} as Element;
+      if (selector.includes("data-piano-shortcuts") && shortcutsBlocked) return {} as Element;
       if (selector.includes("stage-slider") && control) return {} as Element;
       return null;
     },
@@ -45,5 +47,9 @@ describe("piano shortcut target filtering", () => {
     for (const input of ["KeyA", "ArrowUp", " "])
       expect(shouldIgnorePianoShortcut(target({ input: true }), input)).toBe(true);
     expect(shouldIgnorePianoShortcut(target({ editable: true }), "KeyA")).toBe(true);
+  });
+
+  it("keeps mapped keys away from temporary settings dialogs", () => {
+    expect(shouldIgnorePianoShortcut(target({ shortcutsBlocked: true }), "KeyA")).toBe(true);
   });
 });

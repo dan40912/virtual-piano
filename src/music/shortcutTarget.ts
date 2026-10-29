@@ -17,6 +17,7 @@ type TargetLike = EventTarget & {
 export function shouldIgnorePianoShortcut(target: EventTarget | null, key: string) {
   if (!target || typeof target !== "object") return false;
   const element = target as TargetLike;
+  if (element.closest?.('[data-piano-shortcuts="blocked"]')) return true;
   const tagName = element.tagName?.toLowerCase();
   const inputType = element.type?.toLowerCase() || "text";
   const shortcutInput = tagName === "input" && ["checkbox", "radio", "range"].includes(inputType);

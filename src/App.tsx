@@ -21,6 +21,7 @@ import { ChordPanel } from "./components/ChordPanel";
 import { Piano } from "./components/Piano";
 import { Roll } from "./components/Visuals";
 import { PersistentSheetHost } from "./components/PersistentSheetHost";
+import { MobilePerformanceControls } from "./components/MobilePerformanceControls";
 import { engine } from "./audio/PianoEngine";
 import { player } from "./audio/PlaybackScheduler";
 import { useSettings } from "./store";
@@ -1950,6 +1951,27 @@ export default function App() {
           <button type="button" className="keyboard-only-exit" aria-label="退出純鍵盤模式並返回原畫面" title="退出純鍵盤" onClick={keyboardOnly.exit}>
             <X size={20} aria-hidden="true" />
           </button>
+          <MobilePerformanceControls
+            playing={playing}
+            hasSong={Boolean(song)}
+            visibleWhiteKeys={settings.visibleWhiteKeys}
+            keyboardSwipeScroll={settings.keyboardSwipeScroll}
+            octave={settings.octave}
+            rotate={rotate}
+            onOpenTracks={() => { setLidTab("stand"); openLid(); }}
+            onTogglePlayback={() => {
+              if (playing) {
+                if (songRef.current) rememberPosition(songRef.current, player.position);
+                player.stop(false);
+                setPlaying(false);
+                setActive(new Set());
+              } else void play();
+            }}
+            onEnterKeyboardOnly={keyboardOnly.enter}
+            onVisibleWhiteKeysChange={(visibleWhiteKeys) => settings.set({ visibleWhiteKeys })}
+            onKeyboardSwipeScrollChange={(keyboardSwipeScroll) => settings.set({ keyboardSwipeScroll })}
+            onOctaveChange={(octave) => settings.set({ octave })}
+          />
           <div className="keyboard-tools">
             <div>
               <span className="tiny-dot" />{" "}

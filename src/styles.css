@@ -3115,7 +3115,7 @@ footer > span:first-child {
 .studio > .stage-prompt {
   display: none;
 }
-.app[data-lid="closed"]:not([data-view="focus"]) .studio > :not(.piano-lid):not(.piano-housing):not(.stage-prompt):not(.keyboard-tools):not(.closed-playback-slot) {
+.app[data-lid="closed"]:not([data-view="focus"]):not([data-keyboard-only="true"]) .studio > :not(.piano-lid):not(.piano-housing):not(.stage-prompt):not(.keyboard-tools):not(.closed-playback-slot):not(.mobile-performance-controls) {
   display: none !important;
 }
 .app[data-lid="closed"] .studio > .keyboard-tools,

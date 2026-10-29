@@ -664,6 +664,9 @@
 /* Bound the mobile/tablet lid to one inner viewport: the visible tabpanel is
    the only vertical scroller, so focus scrolling cannot move the tray itself. */
 @media (max-width: 1023px), (orientation: landscape) and (max-height: 500px) {
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="closed"] > .stage > footer {
+    display: none !important;
+  }
   .app:not([data-view="focus"])[data-stage="playing"][data-lid="open"] .piano-lid.is-open .lid-tray-inner {
     height: 100% !important;
     min-height: 0 !important;
@@ -715,4 +718,229 @@
 .app.app[data-keyboard-only="true"] > .stage > main {
   width: 100% !important;
   height: 100% !important;
+}
+
+.mobile-performance-controls { display: none; }
+.mobile-performance-controls > .mobile-performance-action {
+  display: inline-flex;
+  flex: 1 1 0;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid #746442;
+  border-radius: 9px;
+  color: #e7d7a8;
+  background: #171a15;
+  font-size: 11px;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+.mobile-performance-controls > .mobile-performance-action:disabled { opacity: .45; }
+.mobile-performance-controls > .mobile-performance-pure {
+  flex: 0 0 auto;
+  min-width: 90px;
+  border-color: #c9b788;
+  color: #171812;
+  background: linear-gradient(145deg, #d1bc82, #9e8753);
+  font-weight: 700;
+}
+.mobile-performance-controls > .mobile-performance-action:active { transform: scale(.98); }
+.mobile-performance-settings-layer {
+  position: fixed;
+  z-index: 1800;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px 12px max(12px, env(safe-area-inset-bottom, 0px));
+}
+.mobile-performance-settings-scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: #05060499;
+}
+.mobile-performance-settings {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 420px);
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+  padding: 12px;
+  border: 1px solid #746442;
+  border-radius: 14px;
+  background: #171a16;
+  box-shadow: 0 12px 36px #000b;
+  color: #e7e8e2;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.mobile-performance-settings > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid #ffffff1c;
+}
+.mobile-performance-settings > header button,
+.mobile-performance-octave button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid #746442;
+  border-radius: 9px;
+  background: #20221e;
+  color: #eadbb3;
+  touch-action: manipulation;
+}
+.mobile-performance-key-size {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 64px;
+  padding: 8px 0;
+  border-bottom: 1px solid #ffffff1c;
+}
+.mobile-performance-key-size output,
+.mobile-performance-octave output { color: #e6cd8f; font-variant-numeric: tabular-nums; }
+.mobile-performance-key-size .stage-slider { grid-column: 1 / -1; width: 100%; }
+.mobile-performance-swipe-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-bottom: 1px solid #ffffff1c;
+  border-radius: 0;
+  color: #e7e8e2;
+}
+.mobile-performance-swipe-toggle > span:last-child { color: #e6cd8f; }
+.mobile-performance-octave {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 52px;
+  padding-top: 8px;
+}
+.mobile-performance-octave > span { margin-right: auto; }
+.mobile-performance-octave output { min-width: 38px; text-align: center; }
+
+@media (max-width: 1023px), (orientation: landscape) and (max-height: 500px) {
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] > .stage {
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] > .stage > header {
+    flex: 0 0 50px !important;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] > .stage > main {
+    box-sizing: border-box !important;
+    flex: 1 1 auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .studio {
+    display: grid !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+    grid-template-areas: "piano" "mobile-controls" !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .mobile-performance-controls {
+    grid-area: mobile-controls !important;
+    display: flex !important;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 56px;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px max(4px, env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #363a31;
+    background: #121511;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-lid,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .closed-playback-slot,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .keyboard-tools,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .mode-row,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .mobile-score-splitter {
+    display: none !important;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing {
+    position: relative !important;
+    inset: auto !important;
+    grid-area: piano !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    overflow: hidden !important;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing > .fallboard,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing > .felt,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing > .chord-buttons-slot,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing > .keyboard-zoom-control,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing > .octave-side-controls,
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing > .piano-lip {
+    display: none !important;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing > .keyboard-scroll {
+    position: relative !important;
+    display: block !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    scrollbar-width: none;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing > .keyboard-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] .piano-housing .keys {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] > .stage > header {
+    flex-basis: 46px !important;
+  }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .app:not([data-keyboard-only="true"]):not([data-view="focus"])[data-stage="playing"][data-lid="closed"] > .stage > header {
+    display: none !important;
+  }
 }
