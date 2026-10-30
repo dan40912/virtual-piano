@@ -644,6 +644,27 @@
   display: inline-flex !important;
 }
 
+/* Keep pure-mode keys at a usable, bounded size. The keyboard stays anchored
+   to the bottom edge (inside the safe-area-adjusted studio), leaving extra
+   viewport height above it instead of stretching the white keys. */
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .keyboard-scroll {
+  display: flex !important;
+  align-items: flex-end !important;
+}
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .keyboard-scroll > .keys {
+  flex: 0 0 auto !important;
+  height: clamp(160px, 48vh, 360px) !important;
+  height: clamp(160px, 48dvh, 360px) !important;
+  min-height: 0 !important;
+  max-height: 360px !important;
+}
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .keyboard-scroll > .keys > .piano-key.white {
+  height: calc(100% - 8px) !important;
+}
+.app.app[data-keyboard-only="true"][data-keyboard-only="true"][data-stage="playing"] > .stage > main > .studio > .piano-housing > .keyboard-scroll > .keys > .piano-key.black {
+  height: 62% !important;
+}
+
 /* Keep the single touch entry above the adjacent custom slider hit area and
    avoid the duplicate toolbar entry on small touch layouts. */
 @media (hover: none) and (pointer: coarse) and (max-width: 1023px) {
