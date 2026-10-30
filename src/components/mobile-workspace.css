@@ -694,6 +694,11 @@
     min-height: 160px !important;
     max-height: clamp(160px, calc(100dvh - 560px), 358px) !important;
   }
+  .app:not([data-view="focus"])[data-stage="playing"][data-lid="open"] .grand-piano-lid .lid-tray:has(.lid-playback-slot .player.more-controls-open) {
+    height: max(320px, clamp(160px, calc(100dvh - 560px), 358px)) !important;
+    min-height: 320px !important;
+    max-height: max(320px, clamp(160px, calc(100dvh - 560px), 358px)) !important;
+  }
 }
 
 /* Pure keyboard is a temporary presentation layer and may coexist with focus

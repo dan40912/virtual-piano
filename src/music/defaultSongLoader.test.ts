@@ -8,6 +8,15 @@ function deferred<T>() {
 }
 
 describe("default song loader", () => {
+  it("does not request the default module until the caller asks for it", async () => {
+    const load = vi.fn<() => Promise<string>>().mockResolvedValue("default song");
+    const getSong = createCoalescedLoader(load);
+
+    expect(load).not.toHaveBeenCalled();
+    await expect(getSong()).resolves.toBe("default song");
+    expect(load).toHaveBeenCalledOnce();
+  });
+
   it("coalesces concurrent requests and retries after a load error", async () => {
     const load = vi.fn<() => Promise<string>>()
       .mockRejectedValueOnce(new Error("temporary failure"))
@@ -21,7 +30,7 @@ describe("default song loader", () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
-  it("does not apply the background song after a user action supersedes the initial load", async () => {
+  it.each(["file import", "clear song"])("ignores a pending default after the user chooses to %s", async () => {
     const loaded = deferred<string>();
     const getSong = createCoalescedLoader(() => loaded.promise);
     let selectionVersion = 0;
@@ -38,7 +47,7 @@ describe("default song loader", () => {
     expect(apply).not.toHaveBeenCalled();
   });
 
-  it("applies the initial song if no user action supersedes it", async () => {
+  it("applies a requested default while that selection remains current", async () => {
     const apply = vi.fn();
     const request = applyIfCurrent(
       () => Promise.resolve("default song"),

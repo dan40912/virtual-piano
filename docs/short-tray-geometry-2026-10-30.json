@@ -1,0 +1,23 @@
+{
+  "normal": [
+    {
+      "h": 768,
+      "panel": 154,
+      "tray": 320,
+      "w": 1024
+    },
+    {
+      "h": 900,
+      "panel": 256,
+      "tray": 422,
+      "w": 1440
+    }
+  ],
+  "expandedWithLoop": {
+    "h": 720,
+    "loop": "true",
+    "panel": 96,
+    "tray": 320,
+    "w": 1280
+  }
+}

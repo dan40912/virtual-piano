@@ -507,17 +507,21 @@ export default function App() {
     catch (error) { libraryNote = ` · ${(error as Error).message}`; }
     setStatus(`${s.title} · ${s.notes.length} 個音符，解析成功${libraryNote}`);
   };
-  const loadDefaultSong = () => {
+  const loadDefaultSong = (
+    requestedMode: "auto" | "practice" | "accompaniment" = "practice",
+  ) => {
     if (explicitDefaultLoad.current?.version === songChoiceVersion.current)
       return explicitDefaultLoad.current.promise;
     markSongChoice();
     const requestVersion = songChoiceVersion.current;
     setDefaultSongLoading(true);
     setStatus("正在載入預設練習曲…");
-    const request = defaultSongLoader.current!()
-      .then((defaultSong) => {
-        if (songChoiceVersion.current === requestVersion) load(defaultSong);
-      })
+    const request = applyIfCurrent(
+      defaultSongLoader.current!,
+      () => songChoiceVersion.current === requestVersion,
+      (defaultSong) => load(defaultSong, requestedMode),
+    )
+      .then(() => undefined)
       .catch((error: unknown) => {
         if (songChoiceVersion.current === requestVersion) {
           const message = error instanceof Error ? error.message : "未知錯誤";
@@ -531,32 +535,6 @@ export default function App() {
     explicitDefaultLoad.current = { promise: request, version: requestVersion };
     return request;
   };
-  useEffect(() => {
-    if (lastSong.current?.song) return;
-    let active = true;
-    const requestVersion = songChoiceVersion.current;
-    setDefaultSongLoading(true);
-    setStatus("正在準備預設練習曲…");
-    void applyIfCurrent(
-      defaultSongLoader.current!,
-      () => active && songChoiceVersion.current === requestVersion && !songRef.current,
-      (defaultSong) => {
-        songRef.current = defaultSong;
-        setSong(defaultSong);
-        setLoopB(defaultSong.duration);
-        setStatus(`${defaultSong.title} · ${defaultSong.notes.length} 個音符，解析成功`);
-      },
-    )
-      .catch((error: unknown) => {
-        if (!active || songChoiceVersion.current !== requestVersion) return;
-        const message = error instanceof Error ? error.message : "未知錯誤";
-        setStatus(`預設曲載入失敗：${message}。請按「載入預設曲」重試。`);
-      })
-      .finally(() => {
-        if (active && songChoiceVersion.current === requestVersion) setDefaultSongLoading(false);
-      });
-    return () => { active = false; };
-  }, []);
   const restoreOriginalComparison = () => {
     const original = originalComparison.current;
     if (!original) return;
@@ -709,6 +687,8 @@ export default function App() {
       lidHint.dismiss();
       setLidTab("stand");
       setLidOpen(true);
+      if (!songRef.current)
+        void loadDefaultSong(mode as "auto" | "practice" | "accompaniment");
     }
   };
   const enterFocusView = () => {
@@ -1172,12 +1152,12 @@ export default function App() {
     if (!song) return;
     const url = new URL(window.location.href);
     url.searchParams.set("practice", encodePracticeShare(song, currentPreferences()));
+    const shareUrl = url.toString();
+    setShareNotice(shareUrl);
     try {
-      await navigator.clipboard.writeText(url.toString());
+      await navigator.clipboard.writeText(shareUrl);
       setShareNotice("練習設定連結已複製；曲目檔案不會包含在連結中。接收者需自行載入相同曲目。");
-    } catch {
-      setShareNotice(url.toString());
-    }
+    } catch { /* Keep the visible URL available for manual copying. */ }
   };
   const playbackBar = (
           <div

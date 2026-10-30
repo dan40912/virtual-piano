@@ -1,0 +1,17 @@
+{
+  "song": "小星星 · Twinkle, Twinkle",
+  "preferences": {
+    "speed": 0.75,
+    "transpose": 2,
+    "loop": true,
+    "loopA": 2,
+    "loopB": 6,
+    "muted": [],
+    "autoPolicy": {
+      "0": "manual",
+      "1": "all"
+    },
+    "splitPitch": 60
+  },
+  "url": "http://127.0.0.1:4174/?practice=eyJ2IjoyLCJzIjoic29uZy12Mi0yNTNrMmhxODhzcm04IiwidCI6IuWwj-aYn-aYnyDCtyBUd2lua2xlLCBUd2lua2xlIiwicCI6eyJzcGVlZCI6MC43NSwidHJhbnNwb3NlIjoyLCJsb29wIjp0cnVlLCJsb29wQSI6MiwibG9vcEIiOjYsIm11dGVkIjpbXSwiYXV0b1BvbGljeSI6eyIwIjoibWFudWFsIiwiMSI6ImFsbCJ9LCJzcGxpdFBpdGNoIjo2MH19"
+}
