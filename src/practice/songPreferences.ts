@@ -1,6 +1,6 @@
 import type { Song } from "../music/model";
 import type { Note } from "../music/model";
-import type { AutoPolicy } from "./handSplit";
+import { DEFAULT_SPLIT_PITCH, type AutoPolicy } from "./handSplit";
 
 export interface SongPracticePreferences {
   speed: number;
@@ -93,7 +93,7 @@ function validPreferences(value: unknown, duration: number, tracks: number) {
     loopB: candidate.loopB,
     muted: [...new Set(candidate.muted)],
     autoPolicy,
-    splitPitch: candidate.splitPitch ?? 60,
+    splitPitch: candidate.splitPitch ?? DEFAULT_SPLIT_PITCH,
   };
 }
 

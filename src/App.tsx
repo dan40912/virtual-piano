@@ -49,7 +49,13 @@ import {
   writeSongPreferences,
   type SongPracticePreferences,
 } from "./practice/songPreferences";
-import { isAutomaticNote, type AutoPolicy } from "./practice/handSplit";
+import { DEFAULT_SPLIT_PITCH, isAutomaticNote, type AutoPolicy } from "./practice/handSplit";
+import {
+  mostMissedSoundingPitch,
+  practiceProgressResetPosition,
+  practiceRestartPosition,
+  selectPracticeFeedbackNotes,
+} from "./practice/feedback";
 import { applyIfCurrent, createCoalescedLoader } from "./music/defaultSongLoader";
 import {
   demo,
@@ -256,7 +262,7 @@ export default function App() {
     >({
       0: "bass",
     }),
-    [splitPitch, setSplitPitch] = useState(60),
+    [splitPitch, setSplitPitch] = useState(DEFAULT_SPLIT_PITCH),
     [loop, setLoop] = useState(false),
     [loopA, setLoopA] = useState(0),
     [loopB, setLoopB] = useState(lastSong.current?.song.duration || 0),
@@ -438,8 +444,7 @@ export default function App() {
     setPlaying(false);
     panic();
   }, [panic]);
-  const resetPractice = () => {
-    const startAt = mode === "practice" && practiceType === "wait" && loop ? loopA : player.position;
+  const resetPracticeAt = (startAt: number) => {
     practiceStart.current = startAt;
     previousPosition.current = startAt;
     setStep(
@@ -451,6 +456,18 @@ export default function App() {
     hit.current.clear();
     waitHeld.current.clear();
     setScore({ correct: 0, wrong: 0, offset: 0 });
+  };
+  const resetPractice = () => {
+    resetPracticeAt(
+      practiceProgressResetPosition(mode, practiceType, loop, loopA, player.position),
+    );
+  };
+  const restartPractice = () => {
+    const startAt = practiceRestartPosition(mode, practiceType, loop, loopA, player.position);
+    player.setPosition(startAt);
+    setViewPosition(startAt);
+    if (songRef.current) rememberPosition(songRef.current, startAt);
+    resetPracticeAt(startAt);
   };
   const markSongChoice = () => {
     songChoiceVersion.current++;
@@ -475,6 +492,7 @@ export default function App() {
       setLoopB(s.duration);
       setMuted([]);
       setAutoPolicy(Object.fromEntries(s.tracks.map((_, i) => [i, s.tracks.length === 1 ? "bass" : "all"])));
+      setSplitPitch(DEFAULT_SPLIT_PITCH);
     }
     restoredPreferenceId.current = id;
     setSong(s);
@@ -1107,14 +1125,16 @@ export default function App() {
     song?.notes.filter(
       (n) => n.midi + transpose < 21 || n.midi + transpose > 108,
     ).length || 0;
-  const considered =
-    song?.notes.filter(
-      (n) =>
-        !muted.includes(n.trackId) &&
-        n.midi + transpose >= 21 &&
-        n.midi + transpose <= 108 &&
-        n.startTime >= practiceStart.current,
-    ) || [];
+  const considered = song
+    ? selectPracticeFeedbackNotes(song.notes, {
+        muted,
+        transpose,
+        startAt: practiceStart.current,
+        loop,
+        loopA,
+        loopB,
+      })
+    : [];
   const missedNotes =
     mode === "practice" && practiceType === "rhythm"
       ? considered.filter(
@@ -1122,8 +1142,7 @@ export default function App() {
         )
       : [];
   const missed = missedNotes.length;
-  const missedPitch = [...missedNotes.reduce((counts, note) => counts.set(note.midi, (counts.get(note.midi) || 0) + 1), new Map<number, number>())]
-    .sort((a, b) => b[1] - a[1])[0];
+  const missedPitch = mostMissedSoundingPitch(missedNotes, transpose);
   const missedWindow = [...missedNotes.reduce((counts, note) => {
     const start = Math.floor(note.startTime / 4) * 4;
     counts.set(start, (counts.get(start) || 0) + 1);
@@ -2213,7 +2232,7 @@ export default function App() {
               <button
                 onClick={() => {
                   stop();
-                  resetPractice();
+                  restartPractice();
                 }}
               >
                 重新練習

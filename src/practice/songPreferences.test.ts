@@ -82,7 +82,7 @@ describe("practice configuration", () => {
       setItem: (key: string, value: string) => values.set(key, value),
     });
     const other: Song = { ...song, title: "副歌", source: "local.mid", notes: song.notes.map((note) => ({ ...note, midi: note.midi + 5 })) };
-    const otherPrefs = { ...prefs, speed: 1.25, transpose: -3, loopA: 1, loopB: 4, autoPolicy: { 0: "all" as const } };
+    const otherPrefs = { ...prefs, speed: 1.25, transpose: -3, loopA: 1, loopB: 4, autoPolicy: { 0: "all" as const }, splitPitch: 48 };
     writeSongPreferences(song, prefs);
     writeSongPreferences(other, otherPrefs);
     expect(readSongPreferences(song)).toEqual(prefs);
