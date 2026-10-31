@@ -75,8 +75,9 @@ describe("hymnal validation", () => {
     "https://user:password@hymnal.net/zh/hymn/ch/471",
     "https://hymnal.net/a",
     "ftp://hymnal.net/zh/hymn/ch/471",
+    "這不是網址",
   ])("rejects unsafe or unsupported URL %s", (url) =>
-    expect(() => validateHymnal(url)).toThrow(),
+    expect(() => validateHymnal(url)).toThrow("請輸入有效的 hymnal.net 詩歌網址"),
   );
 });
 const xml = `<score-partwise><work><work-title>Test score</work-title></work><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1"><measure><attributes><divisions>2</divisions><time><beats>3</beats><beat-type>4</beat-type></time></attributes><direction><sound tempo="120"/></direction><note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration><tie type="start"/></note><note><chord/><pitch><step>E</step><alter>-1</alter><octave>4</octave></pitch><duration>2</duration></note><direction><sound tempo="60"/></direction><note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration><tie type="stop"/></note><note><rest/><duration>2</duration></note></measure></part></score-partwise>`;

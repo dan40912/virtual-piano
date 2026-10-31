@@ -169,6 +169,8 @@ export default function App() {
   const [scorePaperRequested, setScorePaperRequested] = useState(false);
   const [hand, setHand] = useState<PracticeHand>("right");
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [ghost, setGhost] = useState<Set<number>>(() => new Set());
+  const interacted = useRef(false);
   useEffect(() => {
     useSettings.getState().set({ theme: "dark" });
   }, []);
@@ -177,6 +179,30 @@ export default function App() {
     player.setPosition(lastSong.current.position);
     setViewPosition(lastSong.current.position);
   }, []);
+  // Act 1 invites a first touch: the closed piano silently plays the opening
+  // of Twinkle Twinkle every few seconds until someone touches it.
+  useEffect(() => {
+    if (lidOpen || interacted.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const phrase = [60, 60, 67, 67, 69, 69, 67];
+    const timers: number[] = [];
+    const show = (notes: number[]) => () => {
+      if (!interacted.current) setGhost(new Set(notes));
+    };
+    const play = () => {
+      if (interacted.current) return;
+      phrase.forEach((midi, i) => {
+        timers.push(window.setTimeout(show([midi]), i * 340));
+        timers.push(window.setTimeout(show([]), i * 340 + 260));
+      });
+    };
+    timers.push(window.setTimeout(play, 1600));
+    const loop = window.setInterval(play, 9000);
+    return () => {
+      window.clearInterval(loop);
+      timers.forEach(window.clearTimeout);
+      setGhost(new Set());
+    };
+  }, [lidOpen]);
   useEffect(() => {
     const sync = () => setFullscreen(Boolean(document.fullscreenElement));
     sync();
@@ -1209,6 +1235,12 @@ export default function App() {
     file.current!.click();
   };
   const notice = modeNotice || toast;
+  const stopGhost = () => {
+    if (interacted.current) return;
+    interacted.current = true;
+    setGhost(new Set());
+  };
+  const shownActive = ghost.size && !lidOpen ? new Set([...active, ...ghost]) : active;
 
   const drawerTabs: DrawerTab[] = [
     {
@@ -1366,8 +1398,14 @@ export default function App() {
       data-lid={lidOpen ? "open" : "closed"}
       data-drawer={drawerOpen ? "open" : "closed"}
       data-chord-enabled={settings.chordEnabled ? "true" : "false"}
-      onPointerDownCapture={primeAudio}
-      onKeyDownCapture={primeAudio}
+      onPointerDownCapture={() => {
+        stopGhost();
+        primeAudio();
+      }}
+      onKeyDownCapture={() => {
+        stopGhost();
+        primeAudio();
+      }}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -1565,7 +1603,7 @@ export default function App() {
           <Piano
             count={settings.keyCount}
             mapping={shownMap}
-            active={active}
+            active={shownActive}
             expected={lidOpen ? expected : []}
             onDown={handlePianoDown}
             onUp={release}

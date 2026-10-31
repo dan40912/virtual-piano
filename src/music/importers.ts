@@ -58,7 +58,12 @@ export async function parseMidi(
 }
 export { parseMusicXml as parseXml } from "./MusicXml";
 export function validateHymnal(raw: string) {
-  const u = new URL(raw);
+  let u: URL;
+  try {
+    u = new URL(raw.trim());
+  } catch {
+    throw Error("請輸入有效的 hymnal.net 詩歌網址");
+  }
   if (
     !["http:", "https:"].includes(u.protocol) ||
     !["hymnal.net", "www.hymnal.net"].includes(u.hostname) ||
