@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 const mocks = vi.hoisted(() => ({
-  events: [] as { fn: (t: number) => void; time: number }[],
+  events: [] as { fn: (t: number) => void; time: number; once?: boolean }[],
   now: 10,
   transport: {
     cancel: vi.fn(),
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     start: vi.fn(),
     seconds: 0,
     schedule: vi.fn(),
+    scheduleOnce: vi.fn(),
   },
   engine: {
     panic: vi.fn(),
@@ -57,6 +58,9 @@ beforeEach(() => {
   mocks.events = [];
   mocks.transport.schedule.mockImplementation((fn, time) =>
     mocks.events.push({ fn, time }),
+  );
+  mocks.transport.scheduleOnce.mockImplementation((fn, time) =>
+    mocks.events.push({ fn, time, once: true }),
   );
   globalThis.requestAnimationFrame = vi.fn(() => 1);
   globalThis.cancelAnimationFrame = vi.fn();
@@ -130,6 +134,22 @@ describe("audio clock scheduler", () => {
     p.silent = true;
     p.start(song);
     mocks.events.forEach((e) => e.fn(10 + e.time));
+    expect(mocks.engine.attack).not.toHaveBeenCalled();
+  });
+  it("re-attacks notes spanning a seek inside an A/B loop only once", () => {
+    const p = new PlaybackScheduler();
+    p.loop = true;
+    p.a = 0;
+    p.b = 4;
+    p.position = 2;
+    p.start(song);
+    // Note "a" spans 1–3 s; resuming at 2 s re-strikes it at the seek offset.
+    const reattacks = mocks.events.filter((e) => e.time === 2 && e.once);
+    expect(reattacks).toHaveLength(1);
+    // Every repeating event at the seek offset must not attack again on later passes.
+    mocks.events
+      .filter((e) => e.time === 2 && !e.once)
+      .forEach((e) => e.fn(12));
     expect(mocks.engine.attack).not.toHaveBeenCalled();
   });
 });

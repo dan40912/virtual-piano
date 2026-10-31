@@ -90,6 +90,22 @@ describe("practice configuration", () => {
     expect(readSongPreferences(song)).toEqual(prefs);
   });
 
+  it("keeps the most recently used song when the 40-song cap evicts entries", () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    });
+    const songs = Array.from({ length: 41 }, (_, i): Song => ({ ...song, title: `曲 ${i}`, source: `s${i}.mid` }));
+    writeSongPreferences(songs[0], prefs);
+    for (let i = 1; i < 40; i++) writeSongPreferences(songs[i], prefs);
+    // Practising the first song again must refresh it rather than leave it oldest.
+    writeSongPreferences(songs[0], { ...prefs, speed: 0.5 });
+    writeSongPreferences(songs[40], prefs);
+    expect(readSongPreferences(songs[0])?.speed).toBe(0.5);
+    expect(readSongPreferences(songs[1])).toBeNull();
+  });
+
   it("defaults missing splitPitch to C4 in stored preferences and shared links", () => {
     const values = new Map<string, string>();
     vi.stubGlobal("localStorage", {

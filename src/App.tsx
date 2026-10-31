@@ -110,6 +110,7 @@ const LazySongImportTools = lazy(async () => ({
 
 function PlaybackProgress({
   duration,
+  onScrub,
   onSeek,
   rotate,
   loop,
@@ -119,6 +120,7 @@ function PlaybackProgress({
   onLoopB,
 }: {
   duration: number;
+  onScrub: (position: number) => void;
   onSeek: (position: number) => void;
   rotate: boolean;
   loop: boolean;
@@ -141,7 +143,8 @@ function PlaybackProgress({
         max={duration || 1}
         step={0.01}
         value={position}
-        onChange={onSeek}
+        onChange={onScrub}
+        onCommit={onSeek}
         rotate={rotate}
         markers={loop ? [
           { id: "A", label: "循環起點 A", value: loopA, onChange: onLoopA },
@@ -468,6 +471,14 @@ export default function App() {
     setViewPosition(startAt);
     if (songRef.current) rememberPosition(songRef.current, startAt);
     resetPracticeAt(startAt);
+  };
+  /** The single entry point for switching play modes, so every control stops and resets alike. */
+  const changeMode = (next: string) => {
+    if (next === mode) return;
+    stop();
+    resetPractice();
+    setMode(next);
+    setModeNotice("");
   };
   const markSongChoice = () => {
     songChoiceVersion.current++;
@@ -978,6 +989,7 @@ export default function App() {
     player.a = loopA;
     player.b = loopB;
     player.metronome = metro;
+    player.silent = mode === "practice";
     if (player.playing && song) player.start(song);
   }, [
     speed,
@@ -1010,6 +1022,23 @@ export default function App() {
       hit.current.clear();
       setScore({ correct: 0, wrong: 0, offset: 0 });
     }
+  };
+  // Dragging the progress bar only previews the position; the transport is
+  // rescheduled and the position persisted once, when the drag is committed.
+  const scrubResume = useRef<boolean | null>(null);
+  const scrub = (p: number) => {
+    if (scrubResume.current === null) {
+      scrubResume.current = player.playing;
+      if (player.playing) player.stop(false);
+    }
+    player.setPosition(p);
+    setViewPosition(p);
+  };
+  const commitSeek = (p: number) => {
+    const resume = scrubResume.current;
+    scrubResume.current = null;
+    seek(p);
+    if (resume && songRef.current) void play();
   };
   const importFile = async (f: File) => {
     markSongChoice();
@@ -1205,7 +1234,8 @@ export default function App() {
             </div>
             <PlaybackProgress
               duration={song?.duration || 0}
-              onSeek={seek}
+              onScrub={scrub}
+              onSeek={commitSeek}
               rotate={rotate}
               loop={loop}
               loopA={loopA}
@@ -1466,7 +1496,7 @@ export default function App() {
                     { value: "accompaniment", label: "伴奏" },
                     { value: "practice", label: "練習" },
                   ]}
-                  onChange={(next) => setMode(next)}
+                  onChange={changeMode}
                 />
               </div>
               <label className="focus-speed-control">
@@ -1550,13 +1580,7 @@ export default function App() {
                   >
                     <div className="stand-mode-controls" aria-label="演奏模式">
                       {([["auto", "自動"], ["accompaniment", "伴奏"], ["practice", "練習"]] as const).map(([id, label]) => (
-                        <button key={id} className={mode === id ? "selected" : ""} aria-pressed={mode === id} onClick={() => {
-                          if (mode === id) return;
-                          stop();
-                          resetPractice();
-                          setMode(id);
-                          setModeNotice("");
-                        }}>{label}</button>
+                        <button key={id} className={mode === id ? "selected" : ""} aria-pressed={mode === id} onClick={() => changeMode(id)}>{label}</button>
                       ))}
                       {mode === "practice" && <>
                         <StageSegmented label="練習方式" value={practiceType} options={[{ value: "wait", label: "等待正確音符" }, { value: "rhythm", label: "節奏練習" }]} onChange={(next) => { stop(); resetPractice(); setPracticeType(next); }} />
@@ -2006,11 +2030,7 @@ export default function App() {
                   key={id}
                   className={mode === id ? "selected" : ""}
                   aria-pressed={mode === id}
-                  onClick={() => {
-                    stop();
-                    resetPractice();
-                    setMode(id);
-                  }}
+                  onClick={() => changeMode(id)}
                 >
                   {id === "auto" ? (
                     <Play size={13} />

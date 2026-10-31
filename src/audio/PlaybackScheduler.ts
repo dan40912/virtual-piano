@@ -145,9 +145,11 @@ export class PlaybackScheduler {
         (t) => this.releaseScheduled("auto" + n.id, t),
         Math.max(start, end),
       );
-      // Notes already sounding at a seek position are re-attacked at the new origin.
+      // Notes already sounding at a seek position are re-attacked once at the new
+      // origin. scheduleOnce keeps a looping transport from re-striking them mid-note
+      // on every later pass, where the regular attack at `start` already fires.
       if (start < offset && end > offset)
-        transport.schedule(
+        transport.scheduleOnce(
           (t) =>
             this.attackScheduled(
               "auto" + n.id,

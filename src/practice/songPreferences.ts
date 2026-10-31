@@ -110,6 +110,8 @@ export function writeSongPreferences(song: Song, preferences: SongPracticePrefer
   try {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") as Record<string, unknown>;
     const key = songPreferenceId(song);
+    // Re-insert so the most recently used song moves to the end and survives the cap.
+    delete all[key];
     all[key] = preferences;
     const entries = Object.entries(all);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(entries.slice(-40))));
