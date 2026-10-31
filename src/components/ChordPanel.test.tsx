@@ -20,6 +20,7 @@ const down = vi.fn(),
   up = vi.fn();
 beforeEach(async () => {
   vi.clearAllMocks();
+  localStorage.removeItem("virtual-piano-chord-performance");
   useSettings.getState().set({
     chordEnabled: true,
     chordMapping: { ...aChordMap },
@@ -38,6 +39,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
+  vi.useRealTimers();
 });
 const key = async (
   type: string,
@@ -171,7 +173,8 @@ it("keeps chord pads visible and tucks advanced chord options behind settings", 
   expect(container.textContent).toContain("F1、F2、F3、F4、F5、F6、F7、F8、F9");
 
   await act(async () => settings.click());
-  const settingsRegion = container.querySelector<HTMLDivElement>("#chord-settings")!;
+  const settingsRegion =
+    container.querySelector<HTMLDivElement>("#chord-settings")!;
   expect(settingsRegion.hidden).toBe(true);
   expect(container.querySelector('[aria-label="和弦快速配置"]')).not.toBeNull();
   await openSettings();
@@ -201,9 +204,7 @@ it("shows a seven-card preview while disabled and provides a clear enable switch
   );
   expect(down).not.toHaveBeenCalled();
 
-  const toggle = container.querySelector<HTMLButtonElement>(
-    ".chord-toggle",
-  )!;
+  const toggle = container.querySelector<HTMLButtonElement>(".chord-toggle")!;
   expect(toggle.textContent).toBe("開啟一鍵和弦");
   expect(toggle.getAttribute("aria-pressed")).toBe("false");
   await act(async () => toggle.click());
@@ -296,4 +297,103 @@ it("rejects corrupt saved performance preferences and validates chord roots and 
     "Am",
     "Bdim",
   ]);
+});
+
+it("releases a held repeating chord when its style changes and when chord mode is disabled", async () => {
+  vi.useFakeTimers();
+  await openSettings();
+  const voicing = container.querySelector<HTMLSelectElement>(
+    '[aria-label="和弦演奏方式"]',
+  )!;
+  await act(async () => {
+    voicing.value = "arpeggio";
+    voicing.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  await key("keydown", "KeyZ");
+  expect(down).toHaveBeenCalledTimes(1);
+  const initialCount = down.mock.calls.length;
+
+  const feel = container.querySelector<HTMLSelectElement>(
+    '[aria-label="和弦風格"]',
+  )!;
+  await act(async () => {
+    feel.value = "bold";
+    feel.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(up).toHaveBeenCalledTimes(1);
+  await act(async () => vi.advanceTimersByTime(1000));
+  expect(down).toHaveBeenCalledTimes(initialCount);
+
+  await act(async () => {
+    voicing.value = "block";
+    voicing.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await key("keydown", "KeyZ");
+  expect(down).toHaveBeenCalledTimes(initialCount + 4);
+  await act(async () => useSettings.getState().set({ chordEnabled: false }));
+  expect(up).toHaveBeenCalledTimes(5);
+  const stoppedCount = down.mock.calls.length;
+  await act(async () => vi.advanceTimersByTime(3000));
+  expect(down).toHaveBeenCalledTimes(stoppedCount);
+});
+
+it("releases held block voices when unmounted", async () => {
+  await key("keydown", "KeyZ");
+  expect(down).toHaveBeenCalledTimes(4);
+  await act(async () => root.unmount());
+  expect(up).toHaveBeenCalledTimes(4);
+});
+
+it("releases held voices when changing the selected key", async () => {
+  await openSettings();
+  await key("keydown", "KeyZ");
+  expect(down).toHaveBeenCalledTimes(4);
+
+  const keyControl = container.querySelector<HTMLSelectElement>(
+    '[aria-label="和弦調性"]',
+  )!;
+  await act(async () => {
+    keyControl.value = "Bb";
+    keyControl.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(up).toHaveBeenCalledTimes(4);
+  expect(useSettings.getState().chordMapping.KeyZ).toBe("Bb");
+});
+
+it("plays a transposed G major I–V–vi–IV progression in the selected order", async () => {
+  vi.useFakeTimers();
+  await openSettings();
+  const keyControl = container.querySelector<HTMLSelectElement>(
+    '[aria-label="和弦調性"]',
+  )!;
+  await act(async () => {
+    keyControl.value = "G";
+    keyControl.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(useSettings.getState().chordMapping.KeyZ).toBe("G");
+
+  const playButton = Array.from(
+    container.querySelectorAll<HTMLButtonElement>(".chord-presets button"),
+  ).find((button) => button.textContent?.includes("播放 G–D–Em–C"))!;
+  await act(async () => playButton.click());
+  await act(async () => vi.advanceTimersByTime(0));
+  expect(down.mock.calls.map((call) => call[1])).toEqual(triadChordCatalog.G);
+
+  await act(async () => vi.advanceTimersByTime(720));
+  expect(down.mock.calls.slice(4).map((call) => call[1])).toEqual(
+    triadChordCatalog.D,
+  );
+  await act(async () => vi.advanceTimersByTime(720));
+  expect(down.mock.calls.slice(8).map((call) => call[1])).toEqual(
+    triadChordCatalog.Em,
+  );
+
+  await act(async () => {
+    Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "停止和弦")!
+      .click();
+  });
+  expect(up).toHaveBeenCalledTimes(12);
+  expect(vi.getTimerCount()).toBe(0);
 });

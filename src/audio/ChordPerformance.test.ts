@@ -85,7 +85,7 @@ describe("ChordPerformance", () => {
     vi.advanceTimersByTime(100);
     player.start("same", chordCatalog.C, "block", "gentle");
     const count = attack.mock.calls.length;
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(1000);
     expect(attack).toHaveBeenCalledTimes(count);
     expect(release).toHaveBeenCalledTimes(1);
     player.stop();
