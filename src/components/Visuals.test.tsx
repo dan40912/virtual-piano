@@ -33,6 +33,8 @@ it("keeps one resize observer across position ticks and draws the latest positio
     setTransform: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(),
     lineTo: vi.fn(), stroke: vi.fn(), fillRect: vi.fn(), fillText: vi.fn((text: string) => labels.push(text)),
     roundRect: vi.fn(), fill: vi.fn(),
+    createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+    createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
   };
   Object.defineProperties(context, {
     lineWidth: { set: (value: number) => lineWidths.push(value) },
@@ -63,7 +65,8 @@ it("keeps one resize observer across position ticks and draws the latest positio
   await act(async () => resize?.());
   expect(observerInstances).toHaveLength(1);
   expect(getContext).toHaveBeenCalledTimes(1);
-  expect(labels).toContain("8.0s");
+  // 4/4 at 120 BPM: bar 5 starts at 8 s, exactly on the strike line.
+  expect(labels).toContain("5");
 
   await act(async () => root.render(
     <Roll song={song} transpose={0} count={61} zoom={60} muted={[]} scroll={0} mapping={{}} octave={0} manual={false} loopRange={{ enabled: true, a: 8, b: 10 }} />,

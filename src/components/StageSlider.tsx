@@ -39,16 +39,6 @@ export function stageSliderValueAt(
   return Number(Math.max(min, Math.min(max, stepped)).toFixed(precision));
 }
 
-function stageLeft(element: HTMLElement) {
-  let left = 0;
-  let current: HTMLElement | null = element;
-  while (current && !current.classList.contains("stage")) {
-    left += current.offsetLeft;
-    current = current.offsetParent as HTMLElement | null;
-  }
-  return left;
-}
-
 export function StageSlider({
   min,
   max,
@@ -71,9 +61,9 @@ export function StageSlider({
   const update = (event: PointerEvent<HTMLDivElement>, markerId = markerDrag.current) => {
     const element = ref.current;
     if (!element) return value;
-    const stage = element.closest<HTMLElement>(".stage");
-    const width = element.offsetWidth || element.clientWidth || 1;
-    const left = stage ? stageLeft(element) : element.offsetLeft;
+    const rect = element.getBoundingClientRect();
+    const width = rect.width || element.offsetWidth || 1;
+    const left = rect.left;
     const next = stageSliderValueAt(
       event.clientX,
       event.clientY,
@@ -143,9 +133,9 @@ export function StageSlider({
         }
         const element = ref.current;
         if (!element) return;
-        const stage = element.closest<HTMLElement>(".stage");
-        const width = element.offsetWidth || element.clientWidth || 1;
-        const left = stage ? stageLeft(element) : element.offsetLeft;
+        const rect = element.getBoundingClientRect();
+        const width = rect.width || element.offsetWidth || 1;
+        const left = rect.left;
         const next = stageSliderValueAt(
           event.clientX,
           event.clientY,

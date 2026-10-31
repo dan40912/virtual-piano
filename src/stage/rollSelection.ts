@@ -22,6 +22,6 @@ export function rollTimeAtPointer({
   zoom: number;
 }) {
   const stagePoint = toStage(clientX, clientY, rotate, viewportWidth);
-  const chartBottom = canvasHeight - (aligned ? 2 : 34);
+  const chartBottom = canvasHeight - (aligned ? 3 : 34);
   return Math.max(0, position + (chartBottom - (stagePoint.y - canvasTop)) / zoom);
 }

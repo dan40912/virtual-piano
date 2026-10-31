@@ -9,6 +9,7 @@ import {
 import { isBlack, noteName } from "../music/model";
 import { keyLabel } from "../music/chords";
 import { player } from "../audio/PlaybackScheduler";
+import type { KeyLabelMode } from "../store";
 export const Piano = memo(function Piano({
   count,
   mapping,
@@ -26,7 +27,7 @@ export const Piano = memo(function Piano({
   swipeScrollEnabled = false,
   chordMapping = {},
   chordEnabled = false,
-  rotate = false,
+  labels = "both",
 }: {
   count: number;
   mapping: Record<string, number>;
@@ -44,9 +45,11 @@ export const Piano = memo(function Piano({
   swipeScrollEnabled?: boolean;
   chordMapping?: Record<string, string>;
   chordEnabled?: boolean;
-  rotate?: boolean;
+  labels?: KeyLabelMode;
 }) {
   const start = count === 88 ? 21 : 36;
+  const showLetters = labels === "both" || labels === "letters";
+  const showNotes = labels === "both" || labels === "notes";
   const nums = Array.from({ length: count }, (_, i) => start + i);
   const whites = nums.filter((n) => !isBlack(n));
   const pointers = useRef(new Map<number, number>());
@@ -107,27 +110,20 @@ export const Piano = memo(function Piano({
     };
     const update = () => {
       onBounds(Math.max(0, root.scrollWidth - root.clientWidth));
-      const mobileLandscape = window.matchMedia(
-        "(orientation: landscape) and (max-height: 500px)",
-      ).matches || rotate;
-      const compactLayout = window.matchMedia(
-        "(max-width: 767px), (orientation: landscape) and (max-height: 500px)",
-      ).matches;
+      const logicalWidth = root.clientWidth;
       const touchDevice = window.matchMedia(
         "(hover: none) and (pointer: coarse)",
       ).matches;
-      const logicalWidth = root.clientWidth;
-      const nextWidth = mobileLandscape || touchDevice
-        ? logicalWidth > 0
-          ? Math.max(14, logicalWidth / visibleWhiteKeys)
-          : 29
-        : compactLayout
-        ? logicalWidth > 0
-          ? Math.max(32, Math.min(84, logicalWidth / 11))
-          : 29
-        : logicalWidth > 0
-        ? Math.max(36, Math.min(52, logicalWidth / 36))
-        : 40;
+      const portrait = window.matchMedia("(orientation: portrait)").matches;
+      // Touch: show a fixed number of white keys (two octaves at most in portrait)
+      // so each key stays playable. Pointer: fit the whole range when keys stay
+      // at least 22px wide, otherwise scroll horizontally.
+      const visible = portrait ? Math.min(visibleWhiteKeys, 14) : visibleWhiteKeys;
+      const nextWidth = logicalWidth <= 0
+        ? 40
+        : touchDevice
+          ? Math.max(22, logicalWidth / visible)
+          : Math.max(22, Math.min(64, logicalWidth / whites.length));
       if (Math.abs(whiteKeyWidth.current - nextWidth) >= 0.5) {
         whiteKeyWidth.current = nextWidth;
         const keyRow = root.firstElementChild as HTMLElement | null;
@@ -147,7 +143,7 @@ export const Piano = memo(function Piano({
       window.removeEventListener("resize", centerMappedRange);
       window.removeEventListener("orientationchange", centerMappedRange);
     };
-  }, [count, mapping, onBounds, onScroll, visibleWhiteKeys, rotate]);
+  }, [count, mapping, onBounds, onScroll, visibleWhiteKeys, whites.length]);
   useEffect(() => {
     if (ref.current && centeredRef.current) {
       ref.current.scrollLeft = scrollPosition;
@@ -228,10 +224,14 @@ export const Piano = memo(function Piano({
                 touchAction: swipeScrollEnabled ? "pan-x" : "none",
               }}
             >
-              <span className="key-binding">
-                {chordOverride ? `♬${keyLabel(chordOverride.key)}` : shortcutLabel(binding)}
-              </span>
-              <span className="note-label">{noteName(n)}</span>
+              {showLetters && (chordOverride || binding) && (
+                <span className="key-binding">
+                  {chordOverride ? `♬${keyLabel(chordOverride.key)}` : shortcutLabel(binding)}
+                </span>
+              )}
+              {showNotes && !black && (labels === "notes" || n % 12 === 0) && (
+                <span className={`note-label ${n % 12 === 0 ? "is-c" : ""}`}>{noteName(n)}</span>
+              )}
             </button>
           );
         })}

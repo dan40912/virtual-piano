@@ -9,10 +9,11 @@ describe("Piano Roll loop pointer time", () => {
     })).toBe(5);
   });
 
-  it("uses rotated stage coordinates and the aligned keyboard chart baseline", () => {
+  it("measures from the strike line when the waterfall is aligned to the keys", () => {
+    // The strike line sits 3px above the canvas bottom: 300 - 3 = 297.
     expect(rollTimeAtPointer({
-      clientX: 100, clientY: 140, viewportWidth: 390, rotate: true,
-      canvasTop: 200, canvasHeight: 300, aligned: true, position: 1, zoom: 104,
+      clientX: 100, clientY: 297 - 104 * 2, viewportWidth: 390, rotate: false,
+      canvasTop: 0, canvasHeight: 300, aligned: true, position: 1, zoom: 104,
     })).toBe(3);
   });
 

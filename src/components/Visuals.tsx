@@ -6,40 +6,27 @@ import { player } from "../audio/PlaybackScheduler";
 import { useSettings } from "../store";
 import { rollTimeAtPointer } from "../stage/rollSelection";
 import { upperBound } from "../stage/upperBound";
+import { barTimes } from "../stage/bars";
 import { isAutomaticNote, type AutoPolicy } from "../practice/handSplit";
+import { inPracticeHand, type PracticeHand } from "../practice/playStyle";
 
-function offsetLeftDifference(from: HTMLElement, to: HTMLElement) {
-  const offsets = new Map<HTMLElement, number>();
-  let node: HTMLElement | null = from;
-  let left = 0;
-  while (node) {
-    offsets.set(node, left);
-    left += node.offsetLeft;
-    node = node.offsetParent as HTMLElement | null;
-  }
+/** Height of the glowing strike line at the bottom of the waterfall. */
+const STRIKE = 3;
+const RIGHT_HAND = { fill: "#e3c27a", glow: "#ffd98a" };
+const LEFT_HAND = { fill: "#6cc1b2", glow: "#8ff0dc" };
+const ACCESSIBLE_MANUAL = { fill: "#5aa2e6", glow: "#a9d4ff" };
+const ACCESSIBLE_AUTO = { fill: "#e0ad45", glow: "#ffd27a" };
 
-  node = to;
-  left = 0;
-  while (node) {
-    const fromLeft = offsets.get(node);
-    if (fromLeft !== undefined) return fromLeft - left;
-    left += node.offsetLeft;
-    node = node.offsetParent as HTMLElement | null;
-  }
-  return 0;
-}
+export type RollJudge = {
+  /** Note ids the player already hit in the current exercise. */
+  hits: Set<string>;
+  /** Manual notes that started before this time without a hit are drawn as missed. */
+  missBefore: number;
+  /** Whether a note counts toward the exercise (hand, track, loop filters). */
+  counts: (noteId: string) => boolean;
+};
 
-function offsetFromStage(element: HTMLElement) {
-  let left = 0;
-  let top = 0;
-  let node: HTMLElement | null = element;
-  while (node && !node.classList.contains("stage")) {
-    left += node.offsetLeft;
-    top += node.offsetTop;
-    node = node.offsetParent as HTMLElement | null;
-  }
-  return { left, top };
-}
+type KeyGeometry = Map<number, { left: number; width: number }>;
 
 export function Roll({
   song,
@@ -53,11 +40,11 @@ export function Roll({
   manual,
   autoPolicy,
   splitPitch = 60,
-  focusMode = false,
   loopRange,
   onLoopSelect,
   loopSelectionArmed = false,
-  rotate = false,
+  judge,
+  practiceHand,
 }: {
   song: Song | null;
   transpose: number;
@@ -70,14 +57,16 @@ export function Roll({
   manual: boolean;
   autoPolicy?: Record<number, AutoPolicy>;
   splitPitch?: number;
-  focusMode?: boolean;
   loopRange?: { enabled: boolean; a: number; b: number };
   onLoopSelect?: (a: number, b: number) => void;
   loopSelectionArmed?: boolean;
-  rotate?: boolean;
+  judge?: RollJudge;
+  /** In practice modes, notes for the other hand are drawn dimmed like accompaniment. */
+  practiceHand?: PracticeHand;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const dragStart = useRef<number | null>(null);
+  const geometry = useRef<{ keys: KeyGeometry; dirty: boolean }>({ keys: new Map(), dirty: true });
   const [draftRange, setDraftRange] = useState<[number, number] | null>(null);
   const notePalette = useSettings((settings) => settings.notePalette);
   const position = useSyncExternalStore(
@@ -86,221 +75,210 @@ export function Roll({
     player.getPositionSnapshot,
   );
   const drawRef = useRef<() => void>(() => {});
+  const keyRow = () =>
+    ref.current?.closest<HTMLElement>(".vp")?.querySelector<HTMLElement>(".keys") ?? null;
+  /** Key positions relative to the canvas, re-measured only after resize or scroll. */
+  const measureKeys = (canvas: HTMLCanvasElement) => {
+    if (!geometry.current.dirty) return geometry.current.keys;
+    const keys: KeyGeometry = new Map();
+    const row = keyRow();
+    if (row) {
+      const origin = canvas.getBoundingClientRect().left;
+      row.querySelectorAll<HTMLElement>(".piano-key[data-midi]").forEach((key) => {
+        const rect = key.getBoundingClientRect();
+        keys.set(Number(key.dataset.midi), { left: rect.left - origin, width: rect.width });
+      });
+    }
+    geometry.current = { keys, dirty: keys.size === 0 };
+    return keys;
+  };
   const draw = () => {
-      const canvas = ref.current;
-      if (!canvas) return;
-      const focusApp = focusMode
-        ? canvas.closest<HTMLElement>('.app[data-view="focus"]')
-        : null;
-      const pianoKeys = focusApp?.querySelector<HTMLElement>(
-        ".piano-housing .keys",
-      );
-      const pianoScroller = pianoKeys?.parentElement as HTMLElement | null;
-      if (focusMode && pianoScroller) {
-        canvas.style.setProperty(
-          "width",
-          `${pianoScroller.clientWidth}px`,
-          "important",
-        );
-      } else {
-        canvas.style.removeProperty("width");
-      }
-      const width = canvas.offsetWidth;
-      const height = canvas.offsetHeight;
-      if (width <= 0 || height <= 0) return;
-      const pixelWidth = Math.round(width * devicePixelRatio);
-      const pixelHeight = Math.round(height * devicePixelRatio);
-      if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
-      if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
-      const ctx = canvas.getContext("2d")!;
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-      ctx.clearRect(0, 0, width, height);
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = 1;
-      ctx.textAlign = "start";
-      const w = width,
-        h = height;
-      const start = count === 88 ? 21 : 36;
-      const whites = Array.from({ length: count }, (_, i) => start + i).filter(
-        (n) => !isBlack(n),
-      );
-      const unit = Math.max(w, whites.length * 29) / whites.length;
-      const keyGeometry = new Map<number, { left: number; width: number }>();
-      if (pianoKeys) {
-        const keysToCanvas = offsetLeftDifference(pianoKeys, canvas);
-        pianoKeys.querySelectorAll<HTMLElement>(".piano-key[data-midi]").forEach((key) => {
-          keyGeometry.set(Number(key.dataset.midi), {
-            left:
-              keysToCanvas + key.offsetLeft - (pianoScroller?.scrollLeft || 0),
-            width: key.offsetWidth,
-          });
-        });
-      }
-      const aligned = focusMode && keyGeometry.size > 0;
-      const chartBottom = h - (aligned ? 2 : 34);
-      if (loopRange?.enabled) {
-        const yForTime = (time: number) => chartBottom - (time - position) * zoom;
-        const ay = yForTime(loopRange.a);
-        const by = yForTime(loopRange.b);
-        if (by >= 0 && ay <= chartBottom) {
-          ctx.fillStyle = "#d6bd7720";
-          ctx.fillRect(0, Math.max(0, by), w, Math.max(0, Math.min(chartBottom, ay) - Math.max(0, by)));
-        }
-        for (const [time, label] of [[loopRange.a, "A"], [loopRange.b, "B"]] as const) {
-          const y = yForTime(time);
-          if (y < 0 || y > chartBottom) continue;
-          ctx.strokeStyle = "#e6c979";
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-          ctx.stroke();
-          ctx.fillStyle = "#171710";
-          ctx.fillRect(4, y - 9, 16, 16);
-          ctx.fillStyle = "#f4dd9b";
-          ctx.font = "bold 10px sans-serif";
-          ctx.fillText(label, 9, y + 3);
-        }
-      }
-      if (draftRange) {
-        const y1 = chartBottom - (draftRange[0] - position) * zoom;
-        const y2 = chartBottom - (draftRange[1] - position) * zoom;
-        const top = Math.max(0, Math.min(y1, y2));
-        const bottom = Math.min(chartBottom, Math.max(y1, y2));
-        if (bottom > top) {
-          ctx.fillStyle = "#8db9e430";
-          ctx.fillRect(0, top, w, bottom - top);
-          ctx.strokeStyle = "#a9d4ff";
-          ctx.lineWidth = 1.5;
-          for (const y of [y1, y2]) {
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(w, y);
-            ctx.stroke();
-          }
-        }
-      }
-      ctx.strokeStyle = "#ffffff08";
-      for (let i = 0; i <= whites.length; i++) {
-        ctx.beginPath();
-        const x = aligned
-          ? keyGeometry.get(whites[i])?.left ?? i * unit - scroll
-          : i * unit - scroll;
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, chartBottom);
-        ctx.stroke();
-      }
-      ctx.font = "10px monospace";
-      for (let i = 0; i * 60 < chartBottom; i++) {
-        const y = chartBottom - i * 60;
-        ctx.fillStyle = "#929b91";
-        ctx.fillText(`${(position + (i * 60) / zoom).toFixed(1)}s`, 8, y - 4);
-        ctx.strokeStyle = "#ffffff0b";
+    const canvas = ref.current;
+    if (!canvas) return;
+    const width = canvas.offsetWidth;
+    const height = canvas.offsetHeight;
+    if (width <= 0 || height <= 0) return;
+    const ratio = window.devicePixelRatio || 1;
+    const pixelWidth = Math.round(width * ratio);
+    const pixelHeight = Math.round(height * ratio);
+    if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+    if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+    const ctx = canvas.getContext("2d")!;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "start";
+    const start = count === 88 ? 21 : 36;
+    const whites = Array.from({ length: count }, (_, i) => start + i).filter((n) => !isBlack(n));
+    const unit = Math.max(width, whites.length * 22) / whites.length;
+    const keys = measureKeys(canvas);
+    const keyAt = (midi: number) => {
+      const measured = keys.get(midi);
+      if (measured) return measured;
+      const black = isBlack(midi);
+      return {
+        left: (whites.filter((v) => v < midi).length - (black ? 0.32 : 0)) * unit - scroll,
+        width: unit * (black ? 0.64 : 1),
+      };
+    };
+    const bottom = height - STRIKE;
+    const yAt = (time: number) => bottom - (time - position) * zoom;
+    const visibleUntil = position + bottom / zoom;
+
+    // Lanes: a faint column behind every black key helps the eye track pitch.
+    ctx.fillStyle = "rgba(255,255,255,0.025)";
+    for (let midi = start; midi < start + count; midi++) {
+      if (!isBlack(midi)) continue;
+      const key = keyAt(midi);
+      if (key.left + key.width < 0 || key.left > width) continue;
+      ctx.fillRect(key.left, 0, key.width, bottom);
+    }
+    // Octave guides at every C.
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    for (let midi = start; midi < start + count; midi++) {
+      if (midi % 12 !== 0) continue;
+      const x = Math.round(keyAt(midi).left) + 0.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, bottom);
+      ctx.stroke();
+    }
+
+    if (song) {
+      ctx.font = "600 11px Manrope, 'Noto Sans TC', sans-serif";
+      for (const bar of barTimes(song, Math.max(0, position - 1), visibleUntil)) {
+        const y = Math.round(yAt(bar.time)) + 0.5;
+        if (y < 0 || y > bottom + 1) continue;
+        ctx.strokeStyle = "rgba(255,255,255,0.09)";
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
+        ctx.lineTo(width, y);
         ctx.stroke();
+        ctx.fillStyle = "rgba(236,228,206,0.42)";
+        ctx.fillText(String(bar.index), 10, y - 6);
       }
-      const shortcuts = new Map(
-        Object.entries(mapping).map(([key, midi]) => [
-          midi + octave * 12,
-          shortcutLabel(key),
-        ]),
-      );
-      for (const n of song?.notes || []) {
-        if (muted.includes(n.trackId)) continue;
-        const midi = n.midi + transpose;
-        if (midi < start || midi >= start + count) continue;
-        const bottom = chartBottom - (n.startTime - position) * zoom;
-        const height = Math.max(4, n.duration * zoom);
-        const top = bottom - height;
-        if (bottom < 0 || top > chartBottom) continue;
-        const black = isBlack(midi);
-        const geometry = keyGeometry.get(midi);
-        const x = aligned
-          ? (geometry?.left ?? 0)
-          : (whites.filter((v) => v < midi).length - (black ? 0.32 : 0)) *
-              unit -
-            scroll;
-        const noteWidth = aligned
-          ? (geometry?.width ?? unit)
-          : unit * (black ? 0.64 : 1);
-        const policy = autoPolicy?.[n.trackId];
-        const automatic = isAutomaticNote(policy, midi, splitPitch);
-        const manualNote = manual && (autoPolicy ? !automatic : true);
-        ctx.fillStyle = notePalette === "accessible"
-          ? manualNote ? "#568fc4" : "#e0ad45"
-          : autoPolicy
-            ? automatic ? "#c9b788" : "#85b5a7"
-            : ["#c9b788", "#85b5a7", "#99a9cf", "#c594a5"][n.trackId % 4];
-        ctx.globalAlpha = bottom >= chartBottom ? 0.95 : 0.72;
+    }
+
+    if (loopRange?.enabled) {
+      const ay = yAt(loopRange.a);
+      const by = yAt(loopRange.b);
+      if (by <= bottom && ay >= 0) {
+        ctx.fillStyle = "rgba(227,194,122,0.08)";
+        ctx.fillRect(0, Math.max(0, by), width, Math.min(bottom, ay) - Math.max(0, by));
+      }
+      for (const [time, label] of [[loopRange.a, "A"], [loopRange.b, "B"]] as const) {
+        const y = yAt(time);
+        if (y < 0 || y > bottom) continue;
+        ctx.strokeStyle = "#e3c27a";
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        const horizontalInset = aligned ? 1 : 2;
-        ctx.roundRect(
-          x + horizontalInset,
-          top,
-          Math.max(2, noteWidth - horizontalInset * 2),
-          height - 2,
-          3,
-        );
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.fillStyle = "#e3c27a";
+        ctx.beginPath();
+        ctx.roundRect(width - 30, y - 10, 22, 20, 6);
         ctx.fill();
-        if (notePalette === "accessible" && manualNote) {
-          ctx.globalAlpha = 1;
-          ctx.strokeStyle = "#e5f3ff";
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          if (height > 16 && noteWidth > 19) {
-            ctx.fillStyle = "#fff";
-            ctx.font = "bold 8px sans-serif";
-            ctx.fillText("手", x + horizontalInset + 2, Math.max(9, top + 9));
-          }
-        }
-        const label = shortcuts.get(midi);
-        const keyWidth = noteWidth - 6;
-        if (manual && label && height > 13 && keyWidth > 10) {
-          ctx.globalAlpha = 0.94;
-          ctx.fillStyle = "#161811";
-          ctx.font = `${Math.min(9, Math.max(6, unit * 0.25))}px monospace`;
-          ctx.fillText(label, x + 4, Math.max(10, top + 11), keyWidth);
-        }
-      }
-      ctx.globalAlpha = 1;
-      const mapTop = h - 34;
-      ctx.fillStyle = aligned ? "#d7bb79" : "#0a0d0a";
-      if (aligned) ctx.fillRect(0, h - 2, w, 2);
-      else ctx.fillRect(0, mapTop, w, 34);
-      ctx.strokeStyle = aligned ? "#ead39a" : "#c9b78866";
-      ctx.beginPath();
-      ctx.moveTo(0, aligned ? h - 2 : mapTop);
-      ctx.lineTo(w, aligned ? h - 2 : mapTop);
-      ctx.stroke();
-      for (let midi = start; !aligned && midi < start + count; midi++) {
-        const black = isBlack(midi);
-        const x =
-          whites.filter((v) => v < midi).length * unit -
-          (black ? unit * 0.32 : 0) -
-          scroll;
-        const keyWidth = unit * (black ? 0.64 : 1);
-        if (x + keyWidth < 0 || x > w) continue;
-        ctx.fillStyle = black ? "#292a26" : "#ded9ca";
-        ctx.fillRect(x + 1, mapTop + 2, Math.max(2, keyWidth - 2), 30);
-        ctx.fillStyle = black ? "#e0c987" : "#272821";
-        const shortcut = shortcuts.get(midi) || "·";
-        ctx.font = `${Math.min(8, Math.max(5, unit * 0.24))}px sans-serif`;
+        ctx.fillStyle = "#17140c";
+        ctx.font = "700 12px Manrope, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(shortcut, x + keyWidth / 2, mapTop + 20, keyWidth - 1);
-        if (midi % 12 === 0) {
-          ctx.font = "5px sans-serif";
-          ctx.fillStyle = black ? "#e0c987" : "#796b49";
-          ctx.fillText(
-            `C${Math.floor(midi / 12) - 1}`,
-            x + keyWidth / 2,
-            mapTop + 29,
-            keyWidth,
-          );
-        }
+        ctx.fillText(label, width - 19, y + 4);
         ctx.textAlign = "start";
       }
+    }
+    if (draftRange) {
+      const y1 = yAt(draftRange[0]);
+      const y2 = yAt(draftRange[1]);
+      const top = Math.max(0, Math.min(y1, y2));
+      const end = Math.min(bottom, Math.max(y1, y2));
+      if (end > top) {
+        ctx.fillStyle = "rgba(141,185,228,0.18)";
+        ctx.fillRect(0, top, width, end - top);
+      }
+    }
+
+    const shortcuts = new Map(
+      Object.entries(mapping).map(([key, midi]) => [midi + octave * 12, shortcutLabel(key)]),
+    );
+    const sounding: { x: number; w: number; glow: string }[] = [];
+    for (const n of song?.notes || []) {
+      if (muted.includes(n.trackId)) continue;
+      const midi = n.midi + transpose;
+      if (midi < start || midi >= start + count) continue;
+      const noteBottom = yAt(n.startTime);
+      const noteHeight = Math.max(6, n.duration * zoom);
+      const top = noteBottom - noteHeight;
+      if (noteBottom < 0 || top > bottom) continue;
+      const key = keyAt(midi);
+      if (key.left + key.width < 0 || key.left > width) continue;
+      const automatic = autoPolicy
+        ? isAutomaticNote(autoPolicy[n.trackId], midi, splitPitch)
+        : practiceHand ? !inPracticeHand(practiceHand, midi, splitPitch) : false;
+      const manualNote = manual && !automatic;
+      const palette = notePalette === "accessible"
+        ? manualNote ? ACCESSIBLE_MANUAL : ACCESSIBLE_AUTO
+        : midi > splitPitch ? RIGHT_HAND : LEFT_HAND;
+      const counted = judge?.counts(n.id) ?? false;
+      const hit = counted && judge!.hits.has(n.id);
+      const missed = counted && !hit && n.startTime < judge!.missBefore;
+      const striking = noteBottom >= bottom && top <= bottom;
+      const inset = Math.min(2, key.width * 0.08);
+      const x = key.left + inset;
+      const w = Math.max(3, key.width - inset * 2);
+      const h = Math.max(4, Math.min(noteBottom, bottom) - Math.max(top, -8) - 1);
+      const y = Math.max(top, -8);
+      ctx.globalAlpha = missed ? 0.32 : automatic ? 0.42 : striking || hit ? 1 : 0.86;
+      ctx.fillStyle = missed ? "#6b6a66" : palette.fill;
+      if ((striking || hit) && !missed) {
+        ctx.shadowColor = palette.glow;
+        ctx.shadowBlur = 16;
+      }
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, Math.min(5, w / 3));
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      if (automatic) {
+        ctx.globalAlpha = 0.7;
+        ctx.strokeStyle = palette.fill;
+        ctx.stroke();
+      }
+      if (notePalette === "accessible" && manualNote && !missed) {
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = "#e5f3ff";
+        ctx.stroke();
+      }
+      const label = shortcuts.get(midi);
+      if (manualNote && label && h >= 18 && w >= 16) {
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = "#15130d";
+        ctx.font = "700 11px Manrope, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(label, x + w / 2, Math.min(noteBottom, bottom) - 6, w - 2);
+        ctx.textAlign = "start";
+      }
+      if (striking && !missed && !automatic) sounding.push({ x, w, glow: palette.glow });
+    }
+    ctx.globalAlpha = 1;
+
+    // Strike line: a warm rail where notes meet the keys, flaring above struck keys.
+    const rail = ctx.createLinearGradient(0, bottom - 18, 0, height);
+    rail.addColorStop(0, "rgba(227,194,122,0)");
+    rail.addColorStop(1, "rgba(227,194,122,0.22)");
+    ctx.fillStyle = rail;
+    ctx.fillRect(0, bottom - 18, width, 18 + STRIKE);
+    ctx.fillStyle = "#e3c27a";
+    ctx.fillRect(0, bottom, width, STRIKE);
+    for (const flare of sounding) {
+      const glow = ctx.createRadialGradient(flare.x + flare.w / 2, bottom, 0, flare.x + flare.w / 2, bottom, 36);
+      glow.addColorStop(0, flare.glow);
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = glow;
+      ctx.fillRect(flare.x - 30, bottom - 36, flare.w + 60, 36 + STRIKE);
+    }
+    ctx.globalAlpha = 1;
   };
   drawRef.current = draw;
 
@@ -309,47 +287,43 @@ export function Roll({
     drawRef.current();
   }, [
     song, position, transpose, count, zoom, muted, scroll, mapping, octave,
-    manual, autoPolicy, splitPitch, focusMode, loopRange, notePalette, draftRange,
+    manual, autoPolicy, splitPitch, loopRange, notePalette, draftRange, judge, practiceHand,
   ]);
 
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    const redraw = () => drawRef.current();
-    const observer = new ResizeObserver(redraw);
+    const remeasure = () => {
+      geometry.current.dirty = true;
+      drawRef.current();
+    };
+    const observer = new ResizeObserver(remeasure);
     observer.observe(canvas);
-    let observedScroller: HTMLElement | null = null;
-    if (focusMode) {
-      const focusApp = canvas.closest<HTMLElement>('.app[data-view="focus"]');
-      const keys = focusApp?.querySelector<HTMLElement>(
-        ".piano-housing .keys",
-      );
-      const scroller = keys?.parentElement;
-      if (keys) observer.observe(keys);
-      if (scroller) {
-        observedScroller = scroller;
-        observer.observe(scroller);
-        scroller.addEventListener("scroll", redraw, { passive: true });
-      }
+    const keys = keyRow();
+    const scroller = keys?.parentElement ?? null;
+    if (keys) observer.observe(keys);
+    if (scroller) {
+      observer.observe(scroller);
+      scroller.addEventListener("scroll", remeasure, { passive: true });
     }
-    redraw();
+    remeasure();
     return () => {
       observer.disconnect();
-      observedScroller?.removeEventListener("scroll", redraw);
+      scroller?.removeEventListener("scroll", remeasure);
     };
-  }, [focusMode]);
+  }, [count]);
   const pointTime = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const canvas = ref.current;
     if (!canvas) return position;
-    const offset = offsetFromStage(canvas);
+    const rect = canvas.getBoundingClientRect();
     return rollTimeAtPointer({
       clientX: event.clientX,
       clientY: event.clientY,
       viewportWidth: window.innerWidth,
-      rotate,
-      canvasTop: offset.top,
+      rotate: false,
+      canvasTop: rect.top,
       canvasHeight: canvas.clientHeight,
-      aligned: focusMode,
+      aligned: true,
       position,
       zoom,
     });
@@ -358,7 +332,7 @@ export function Roll({
     <canvas
       ref={ref}
       className="roll"
-      aria-label="Piano Roll：音符由上往下移動，底部琴鍵列顯示對應電腦按鍵"
+      aria-label="音符瀑布：音符由上往下落，碰到金色線時彈奏對應琴鍵"
       style={{ touchAction: loopSelectionArmed ? "none" : "auto", cursor: loopSelectionArmed ? "crosshair" : undefined }}
       onPointerDown={(event) => {
         if (!loopSelectionArmed || !onLoopSelect || (event.button !== 0 && event.pointerType !== "touch")) return;

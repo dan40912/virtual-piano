@@ -9,8 +9,8 @@ Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: Root;
 let container: HTMLDivElement;
 const callbacks = {
+  onViewChange: vi.fn(),
   onUrlChange: vi.fn(),
-  onUrlInputActiveChange: vi.fn(),
   onChooseFile: vi.fn(),
   onFetchSong: vi.fn(),
   onLoadDefault: vi.fn(),
@@ -32,9 +32,8 @@ beforeEach(async () => {
       song={demo}
       url="https://www.hymnal.net/zh/hymn/ch/471"
       loading={false}
-      status="需要手動上傳：目前無法從此網址直接取得 MIDI"
-      rotate={false}
-      urlInputActive={false}
+      status="小星星 · 解析成功"
+      view="roll"
       shareNotice="分享連結已複製"
       hasOriginalComparison
       {...callbacks}
@@ -54,50 +53,33 @@ async function clickButton(label: string) {
   await act(async () => button!.click());
 }
 
-it("routes file selection, default/demo/clear, share, and restore actions through explicit callbacks", async () => {
-  await clickButton("放入 MIDI 檔案");
+it("routes library, import, clear, view, share and restore actions through explicit callbacks", async () => {
+  await clickButton("選擇 MIDI 或 MusicXML 檔案");
   await clickButton("匯入 MIDI");
   await clickButton("匯入 MusicXML");
-  expect(callbacks.onChooseFile.mock.calls).toEqual([[".mid,.midi"], [".mid,.midi"], [".xml,.musicxml"]]);
+  expect(callbacks.onChooseFile.mock.calls).toEqual([[".mid,.midi,.xml,.musicxml"], [".mid,.midi"], [".xml,.musicxml"]]);
 
-  await clickButton("載入預設曲");
-  await clickButton("小星星測試");
-  await clickButton("清除");
-  await clickButton("分享練習設定");
+  await clickButton("預設練習曲");
+  await clickButton("小星星");
+  await clickButton("清除目前曲目");
+  await clickButton("五線譜");
+  await clickButton("複製分享連結");
   await clickButton("返回原曲");
   expect(callbacks.onLoadDefault).toHaveBeenCalledOnce();
   expect(callbacks.onLoadDemo).toHaveBeenCalledOnce();
   expect(callbacks.onClearSong).toHaveBeenCalledOnce();
+  expect(callbacks.onViewChange).toHaveBeenCalledWith("sheet");
   expect(callbacks.onSharePractice).toHaveBeenCalledOnce();
   expect(callbacks.onRestoreOriginal).toHaveBeenCalledOnce();
 });
 
-it("keeps URL loading, CORS guidance, and recent-song save/load available", async () => {
+it("keeps hymnal.net loading as a secondary path and recent-song save/load available", async () => {
   const input = container.querySelector<HTMLInputElement>('input[aria-label="詩歌網址"]')!;
   await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
-  expect(callbacks.onUrlInputActiveChange).toHaveBeenCalledWith(false);
   expect(callbacks.onFetchSong).toHaveBeenCalledOnce();
-  expect(container.querySelector('.status a')?.getAttribute("href")).toBe("https://www.hymnal.net/zh/hymn/ch/471");
+  expect(container.querySelector("details a")?.getAttribute("href")).toBe("https://www.hymnal.net/zh/hymn/ch/471");
 
   await clickButton("儲存目前曲目與位置");
   await clickButton("繼續練習");
   expect(callbacks.onLibraryLoad).toHaveBeenCalledWith(expect.objectContaining({ title: demo.title }), expect.any(Number));
-});
-
-it("requests portrait mode when rotated URL controls are activated", async () => {
-  await act(async () => root.render(
-    <SongImportTools
-      song={demo}
-      url="https://www.hymnal.net/zh/hymn/ch/471"
-      loading={false}
-      status=""
-      rotate
-      urlInputActive={false}
-      shareNotice=""
-      hasOriginalComparison={false}
-      {...callbacks}
-    />,
-  ));
-  await clickButton("載入樂譜");
-  expect(callbacks.onUrlInputActiveChange).toHaveBeenCalledWith(true);
 });

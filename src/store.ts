@@ -4,6 +4,18 @@ import { defaultMap, legacyMap } from "./music/model";
 import { aChordMap } from "./music/chords";
 import { completeMapping } from "./music/keyboard";
 import type { PianoStyle } from "./audio/styles";
+export type KeyLabelMode = "both" | "letters" | "notes" | "none";
+const KEY_LABEL_MODES: KeyLabelMode[] = ["both", "letters", "notes", "none"];
+/** Layout preferences from the retired multi-mode stage; dropped on migration. */
+const RETIRED_KEYS = [
+  "mobileLayout",
+  "mobileOrientation",
+  "mobileStageLayout",
+  "mobileScoreVisible",
+  "mobilePlaybackVisible",
+  "lidHintSeen",
+  "mobileScoreSplit",
+] as const;
 interface Settings {
   pianoStyle: PianoStyle;
   chordEnabled: boolean;
@@ -23,12 +35,7 @@ interface Settings {
   octave: number;
   visibleWhiteKeys: number;
   keyboardSwipeScroll: boolean;
-  mobileOrientation: "portrait" | "landscape";
-  mobileStageLayout: "auto" | "score" | "performance";
-  mobileScoreVisible: boolean;
-  mobilePlaybackVisible: boolean;
-  lidHintSeen: boolean;
-  mobileScoreSplit: number;
+  keyLabels: KeyLabelMode;
   set: (s: Partial<Settings>) => void;
 }
 export const useSettings = create<Settings>()(
@@ -52,23 +59,16 @@ export const useSettings = create<Settings>()(
       octave: 0,
       visibleWhiteKeys: 18,
       keyboardSwipeScroll: false,
-      mobileOrientation: "portrait",
-      mobileStageLayout: "auto",
-      mobileScoreVisible: true,
-      mobilePlaybackVisible: true,
-      lidHintSeen: false,
-      mobileScoreSplit: 0.55,
+      keyLabels: "both",
       set: (s) => set(s),
     }),
     {
       name: "piano-studio-settings-v1",
-      version: 14,
+      version: 15,
       migrate: (state) => {
         const old = state as Partial<Settings>;
-        const migrated = { ...old } as Partial<Settings> & {
-          mobileLayout?: unknown;
-        };
-        delete migrated.mobileLayout;
+        const migrated = { ...old } as Record<string, unknown>;
+        for (const key of RETIRED_KEYS) delete migrated[key];
         const simplifyMapping = (mapping?: Record<string, number>) => {
           if (!mapping) return defaultMap;
           const keys = Object.keys(mapping);
@@ -97,13 +97,9 @@ export const useSettings = create<Settings>()(
               ? old.visibleWhiteKeys
               : 18,
           keyboardSwipeScroll: old.keyboardSwipeScroll === true,
-          mobileOrientation: old.mobileOrientation === "landscape" ? "landscape" : "portrait",
-          mobileStageLayout:
-            old.mobileStageLayout === "score" || old.mobileStageLayout === "performance"
-              ? old.mobileStageLayout
-              : "auto",
-          mobileScoreVisible: old.mobileScoreVisible !== false,
-          mobilePlaybackVisible: old.mobilePlaybackVisible !== false,
+          keyLabels: KEY_LABEL_MODES.includes(old.keyLabels as KeyLabelMode)
+            ? old.keyLabels
+            : "both",
           profiles: Object.fromEntries(
             Object.entries(old.profiles || {}).map(([name, mapping]) => [
               name,
@@ -113,13 +109,6 @@ export const useSettings = create<Settings>()(
           pedal: old.pedal?.startsWith("Shift")
             ? "Space"
             : old.pedal || "Space",
-          lidHintSeen: old.lidHintSeen === true,
-          mobileScoreSplit:
-            typeof old.mobileScoreSplit === "number" &&
-            old.mobileScoreSplit >= 0.25 &&
-            old.mobileScoreSplit <= 0.65
-              ? old.mobileScoreSplit
-              : 0.55,
         } as Settings;
       },
     },
