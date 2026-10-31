@@ -514,6 +514,12 @@ h2 {
   cursor: pointer;
   user-select: none;
 }
+.piano-key,
+.piano-key * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 .piano-key.white {
   height: 179px;
   border-radius: 0 0 4px 4px;

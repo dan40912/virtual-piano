@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAutomaticNote } from "./handSplit";
+import { isAutomaticNote, shouldMarkRollManual } from "./handSplit";
 
 describe("automatic hand split", () => {
   it("assigns the boundary to bass and starts treble strictly above it", () => {
@@ -18,5 +18,12 @@ describe("automatic hand split", () => {
     expect(isAutomaticNote("bass", soundingMidi, 60)).toBe(false);
     expect(isAutomaticNote("treble", soundingMidi, 60)).toBe(true);
     expect(isAutomaticNote("bass", sourceMidi, 60)).toBe(true);
+  });
+
+  it("marks wait-practice Roll notes as manual without changing existing modes", () => {
+    expect(shouldMarkRollManual(false, "practice", "wait")).toBe(true);
+    expect(shouldMarkRollManual(true, "practice", "rhythm")).toBe(true);
+    expect(shouldMarkRollManual(true, "accompaniment", "rhythm")).toBe(true);
+    expect(shouldMarkRollManual(false, "auto", "rhythm")).toBe(false);
   });
 });

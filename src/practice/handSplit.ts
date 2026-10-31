@@ -12,3 +12,11 @@ export function isAutomaticNote(
   if (policy === "treble") return midi > splitPitch;
   return false;
 }
+
+export function shouldMarkRollManual(
+  manualFollow: boolean,
+  mode: string,
+  practiceType: string,
+) {
+  return manualFollow || (mode === "practice" && practiceType === "wait");
+}

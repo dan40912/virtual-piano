@@ -49,7 +49,7 @@ import {
   writeSongPreferences,
   type SongPracticePreferences,
 } from "./practice/songPreferences";
-import { DEFAULT_SPLIT_PITCH, isAutomaticNote, type AutoPolicy } from "./practice/handSplit";
+import { DEFAULT_SPLIT_PITCH, isAutomaticNote, shouldMarkRollManual, type AutoPolicy } from "./practice/handSplit";
 import {
   mostMissedSoundingPitch,
   practiceProgressResetPosition,
@@ -1733,7 +1733,7 @@ export default function App() {
                             scroll={scroll}
                             mapping={settings.mapping}
                             octave={settings.octave}
-                            manual={manualFollow}
+                            manual={shouldMarkRollManual(manualFollow, mode, practiceType)}
                             autoPolicy={mode === "accompaniment" ? autoPolicy : undefined}
                             splitPitch={splitPitch}
                             focusMode={focusView.active}

@@ -25,6 +25,15 @@
   cursor: default;
 }
 
+/* Playing pads contain labels, but long-pressing them should not select text
+   or open the mobile copy/callout menu. Do not suppress desktop context menus. */
+.chord-pad,
+.chord-pad * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .chord-panel .chord-control {
   display: inline-flex;
   gap: 7px;
