@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
     sustain: vi.fn(),
   },
 }));
-vi.mock("tone", () => ({
+const tone = {
   now: () => mocks.now,
   immediate: () => mocks.now,
   getTransport: () => mocks.transport,
@@ -28,8 +28,8 @@ vi.mock("tone", () => ({
     }
     triggerAttackRelease() {}
   },
-}));
-vi.mock("./PianoEngine", () => ({ engine: mocks.engine }));
+};
+vi.mock("./PianoEngine", () => ({ engine: { ...mocks.engine, get tone() { return tone; } } }));
 import { PlaybackScheduler } from "./PlaybackScheduler";
 import type { Song } from "../music/model";
 const song: Song = {

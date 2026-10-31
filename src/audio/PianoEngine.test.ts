@@ -17,6 +17,7 @@ describe("sample engine note ownership and sustain", () => {
   };
   beforeEach(() => {
     engine = new PianoEngine();
+    engine.tone = Tone as never;
     sampler = {
       loaded: true,
       triggerAttack: vi.fn(),

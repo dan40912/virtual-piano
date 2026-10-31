@@ -713,6 +713,11 @@ export default function App() {
     }
   };
   useEffect(() => {
+    // Fetch the audio library once the page is idle, so the first tap can unlock audio instantly.
+    const schedule = window.requestIdleCallback ?? ((callback: () => void) => window.setTimeout(callback, 1200));
+    schedule(() => void engine.preload().catch(() => {}));
+  }, []);
+  useEffect(() => {
     engine.onState = (s) => {
       engine.state = s;
       setAudio(s);

@@ -1,4 +1,4 @@
-import * as Tone from "tone";
+import type * as ToneModule from "tone";
 import { engine } from "./PianoEngine";
 import type { Note, Song } from "../music/model";
 
@@ -66,8 +66,11 @@ export class PlaybackScheduler {
     this.scheduledNotes.delete(id);
     this.publishActiveNotes();
   }
-  click?: Tone.MembraneSynth;
+  click?: ToneModule.MembraneSynth;
   start(song: Song) {
+    const Tone = engine.tone;
+    // The audio library is loaded by engine.ready(), which every caller awaits first.
+    if (!Tone) return;
     this.stop(false);
     const looping = this.loop && this.b > this.a;
     const anchor = looping ? this.a : this.position;
@@ -210,9 +213,12 @@ export class PlaybackScheduler {
   stop(reset = true) {
     this.playing = false;
     cancelAnimationFrame(this.raf);
-    Tone.getTransport().stop();
-    Tone.getTransport().cancel();
-    Tone.getTransport().loop = false;
+    const transport = engine.tone?.getTransport();
+    if (transport) {
+      transport.stop();
+      transport.cancel();
+      transport.loop = false;
+    }
     engine.panic();
     this.scheduledNotes.clear();
     this.publishActiveNotes();
