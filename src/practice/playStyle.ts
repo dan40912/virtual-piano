@@ -36,6 +36,41 @@ export function inPracticeHand(hand: PracticeHand, soundingPitch: number, splitP
   return hand === "left" ? soundingPitch <= splitPitch : soundingPitch > splitPitch;
 }
 
+/**
+ * Which hand a note belongs to. Songs with several tracks split by track (the
+ * first track is the right hand, as follow mode assumes); single-track songs
+ * split by pitch.
+ */
+export function noteInHand(
+  hand: PracticeHand,
+  note: { midi: number; trackId: number },
+  splitPitch: number,
+  transpose: number,
+  multiTrack: boolean,
+) {
+  if (hand === "both") return true;
+  if (multiTrack) return hand === "right" ? note.trackId === 0 : note.trackId !== 0;
+  return inPracticeHand(hand, note.midi + transpose, splitPitch);
+}
+
+/**
+ * Practise the right hand by default, unless the song barely uses one side of
+ * the split (a melody only, or a bass line only); then ask for every note.
+ * A melody that dips to the split note is still one hand, so the left hand
+ * only counts notes a fourth or more below the split.
+ */
+export function defaultHand(
+  notes: { midi: number; trackId?: number }[],
+  splitPitch: number,
+  transpose = 0,
+): PracticeHand {
+  if (!notes.length) return "both";
+  if (new Set(notes.map((n) => n.trackId ?? 0)).size > 1) return "right";
+  const left = notes.filter((n) => n.midi + transpose <= splitPitch - 5).length;
+  const right = notes.filter((n) => n.midi + transpose > splitPitch).length;
+  return Math.min(left, right) / notes.length < 0.15 ? "both" : "right";
+}
+
 /** Accuracy counts wrong presses and missed notes against hits, as a whole percent. */
 export function accuracy(correct: number, wrong: number, missed: number) {
   const attempts = correct + wrong + missed;

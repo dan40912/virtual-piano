@@ -8,7 +8,7 @@ import { rollTimeAtPointer } from "../stage/rollSelection";
 import { upperBound } from "../stage/upperBound";
 import { barTimes } from "../stage/bars";
 import { isAutomaticNote, type AutoPolicy } from "../practice/handSplit";
-import { inPracticeHand, type PracticeHand } from "../practice/playStyle";
+import { noteInHand, type PracticeHand } from "../practice/playStyle";
 
 /** Height of the glowing strike line at the bottom of the waterfall. */
 const STRIKE = 3;
@@ -215,7 +215,7 @@ export function Roll({
       if (key.left + key.width < 0 || key.left > width) continue;
       const automatic = autoPolicy
         ? isAutomaticNote(autoPolicy[n.trackId], midi, splitPitch)
-        : practiceHand ? !inPracticeHand(practiceHand, midi, splitPitch) : false;
+        : practiceHand ? !noteInHand(practiceHand, n, splitPitch, transpose, (song?.tracks.length ?? 0) > 1) : false;
       const manualNote = manual && !automatic;
       const palette = notePalette === "accessible"
         ? manualNote ? ACCESSIBLE_MANUAL : ACCESSIBLE_AUTO

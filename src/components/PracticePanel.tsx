@@ -11,6 +11,7 @@ export function PracticePanel(props: {
   style: PlayStyle;
   onStyle: (style: PlayStyle) => void;
   hand: PracticeHand;
+  multiTrack: boolean;
   onHand: (hand: PracticeHand) => void;
   splitPitch: number;
   onSplitPitch: (pitch: number) => void;
@@ -61,7 +62,10 @@ export function PracticePanel(props: {
             <StageSegmented<PracticeHand> label="練習的手" value={props.hand} options={PRACTICE_HANDS} onChange={props.onHand} />
           </div>
         )}
-        {(handMatters || props.style === "follow") && (
+        {handMatters && props.multiTrack && (
+          <p className="hint">多音軌曲目依音軌分手：第一軌是右手，其餘是左手。</p>
+        )}
+        {((handMatters && !props.multiTrack) || props.style === "follow") && (
           <div className="field-row">
             <span>分手音<small>左手含此音</small></span>
             <StageStepper label="分手音" value={props.splitPitch} min={36} max={84} step={1} onChange={props.onSplitPitch} format={noteName} />

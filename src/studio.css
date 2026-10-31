@@ -58,7 +58,7 @@ a { color: var(--gold); text-underline-offset: 3px; }
 
 /* ---------- Controls ---------- */
 
-.vp button, .modal button {
+.vp button:where(:not(.piano-key)), .modal button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -73,12 +73,13 @@ a { color: var(--gold); text-underline-offset: 3px; }
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
 }
-.vp button:hover:not(:disabled), .modal button:hover:not(:disabled) {
+.vp button:where(:not(.piano-key, [aria-pressed="true"], [aria-expanded="true"], .primary)):hover:not(:disabled),
+.modal button:where(:not(.primary)):hover:not(:disabled) {
   background: var(--surface-strong);
   border-color: var(--line-strong);
 }
-.vp button:active:not(:disabled) { transform: translateY(1px); }
-.vp button:disabled, .modal button:disabled { opacity: 0.4; cursor: default; }
+.vp button:where(:not(.piano-key)):active:not(:disabled) { transform: translateY(1px); }
+.vp button:where(:not(.piano-key)):disabled, .modal button:disabled { opacity: 0.4; cursor: default; }
 .vp button.primary, .modal button.primary, .vp button[aria-pressed="true"].quiet {
   color: var(--gold-ink);
   background: var(--gold);
@@ -136,7 +137,7 @@ a { color: var(--gold); text-underline-offset: 3px; }
   background: transparent;
   color: var(--muted);
 }
-.vp .stage-segmented button:hover:not(:disabled) { background: var(--surface); color: var(--text); }
+.vp .stage-segmented button:not([aria-pressed="true"]):hover:not(:disabled) { background: var(--surface); color: var(--text); }
 .vp .stage-segmented button[aria-pressed="true"] {
   background: var(--gold);
   color: var(--gold-ink);
@@ -485,6 +486,7 @@ a { color: var(--gold); text-underline-offset: 3px; }
 }
 .vp .settings-button { flex: 0 0 auto; border-radius: 999px; }
 .vp .settings-button[aria-expanded="true"] { color: var(--gold-ink); background: var(--gold); border-color: var(--gold); }
+.vp .settings-button[aria-expanded="true"]:hover { background: var(--gold-strong); }
 @media (max-width: 1240px) { .transport-styles { display: none !important; } }
 @media (max-width: 860px) {
   .transport-title { flex: 1 1 auto; }

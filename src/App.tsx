@@ -54,7 +54,8 @@ import {
 } from "./practice/feedback";
 import {
   accuracy,
-  inPracticeHand,
+  defaultHand,
+  noteInHand,
   PLAY_STYLES,
   playStyleOf,
   styleModes,
@@ -290,13 +291,14 @@ export default function App() {
         : [],
     [song, muted, transpose],
   );
+  const multiTrack = (song?.tracks.length ?? 0) > 1;
   // Wait practice only asks for the chosen hand; if that hand has no notes, ask for all of them.
   const handGroups = useMemo(() => {
     const filtered = groupList
-      .map((group) => group.filter((n) => inPracticeHand(hand, n.midi + transpose, splitPitch)))
+      .map((group) => group.filter((n) => noteInHand(hand, n, splitPitch, transpose, multiTrack)))
       .filter((group) => group.length);
     return filtered.length ? filtered : groupList;
-  }, [groupList, hand, transpose, splitPitch]);
+  }, [groupList, hand, transpose, splitPitch, multiTrack]);
   const waitGroups = useMemo(
     () => selectLoopNotes(handGroups, loop, loopA, loopB),
     [handGroups, loop, loopA, loopB],
@@ -469,6 +471,8 @@ export default function App() {
       setSplitPitch(DEFAULT_SPLIT_PITCH);
     }
     restoredPreferenceId.current = id;
+    setHand(defaultHand(s.notes, preferences?.splitPitch ?? DEFAULT_SPLIT_PITCH, preferences?.transpose ?? 0));
+    setDrawerOpen(false);
     setSong(s);
     setView("roll");
     setSummaryOpen(false);
@@ -599,8 +603,10 @@ export default function App() {
         } else if (group.some((a) => a.midi + transpose === n)) {
           if (group.every((a) => waitHeld.current.has(a.midi + transpose))) {
             setScore((s) => ({ ...s, correct: s.correct + group.length }));
-            player.setPosition(group[0].startTime);
             const progress = advanceWaitStep(step, waitGroups.length, loop);
+            // Bring the next chord down to the strike line so it is always the one to play.
+            const next = waitGroups[progress.step];
+            player.setPosition(next ? next[0].startTime : group[0].startTime);
             setStep(progress.step);
             if (progress.wrapped) {
               player.setPosition(loopA);
@@ -615,7 +621,7 @@ export default function App() {
               !muted.includes(a.trackId) &&
               (mode === "accompaniment"
                 ? !isAutomaticNote(autoPolicy[a.trackId], a.midi + transpose, splitPitch)
-                : inPracticeHand(hand, a.midi + transpose, splitPitch)) &&
+                : noteInHand(hand, a, splitPitch, transpose, multiTrack)) &&
               !hit.current.has(a.id) &&
               a.startTime >= practiceStart.current &&
               a.midi + transpose === n &&
@@ -1091,7 +1097,7 @@ export default function App() {
       }).filter((n) =>
         mode === "accompaniment"
           ? !isAutomaticNote(autoPolicy[n.trackId], n.midi + transpose, splitPitch)
-          : inPracticeHand(hand, n.midi + transpose, splitPitch),
+          : noteInHand(hand, n, splitPitch, transpose, multiTrack),
       )
     : [];
   const missedNotes =
@@ -1249,6 +1255,7 @@ export default function App() {
           style={playStyle}
           onStyle={chooseStyle}
           hand={hand}
+          multiTrack={multiTrack}
           onHand={(next) => { setHand(next); resetPractice(); }}
           splitPitch={splitPitch}
           onSplitPitch={setSplitPitch}
