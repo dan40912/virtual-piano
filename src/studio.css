@@ -810,7 +810,7 @@ a { color: var(--gold); text-underline-offset: 3px; }
 .disclosure p { color: var(--muted); font-size: 13px; line-height: 1.6; }
 .url-row { display: flex; gap: 8px; }
 .url-row input { flex: 1 1 auto; }
-.disclosure a { display: inline-block; font-size: 13px; }
+.disclosure a { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 13px; }
 
 /* Chord panel and web MIDI keep their own markup; give them the shared look. */
 .chord-panel { gap: 14px; }
