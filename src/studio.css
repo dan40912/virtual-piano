@@ -571,6 +571,7 @@ a { color: var(--gold); text-underline-offset: 3px; }
 .score-view { background: #1a1a1c; color: var(--text); padding: 16px; }
 .score-view img, .score-view object { width: 100%; min-height: 70vh; border-radius: 8px; background: #fff; }
 
+.vp[data-drawer="open"] .toast { display: none; }
 .toast {
   position: absolute;
   left: 50%;
@@ -708,6 +709,8 @@ a { color: var(--gold); text-underline-offset: 3px; }
 .vp .choice {
   display: grid;
   justify-items: start;
+  justify-content: stretch;
+  align-content: start;
   align-content: start;
   gap: 2px;
   min-height: 64px;
@@ -769,6 +772,8 @@ a { color: var(--gold); text-underline-offset: 3px; }
 .vp .shelf-card {
   display: grid;
   justify-items: start;
+  justify-content: stretch;
+  align-content: start;
   gap: 4px;
   min-height: 96px;
   padding: 14px;
@@ -825,6 +830,8 @@ a { color: var(--gold); text-underline-offset: 3px; }
 .vp .chord-pad {
   display: grid;
   justify-items: start;
+  justify-content: stretch;
+  align-content: start;
   gap: 2px;
   min-height: 72px;
   padding: 10px 12px;
