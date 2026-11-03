@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react";
 import { isBlack, noteName } from "../music/model";
@@ -27,6 +28,7 @@ export const Piano = memo(function Piano({
   chordMapping = {},
   chordEnabled = false,
   rotate = false,
+  keyboardPedal = "",
 }: {
   count: number;
   mapping: Record<string, number>;
@@ -45,11 +47,17 @@ export const Piano = memo(function Piano({
   chordMapping?: Record<string, string>;
   chordEnabled?: boolean;
   rotate?: boolean;
+  keyboardPedal?: string;
 }) {
   const start = count === 88 ? 21 : 36;
   const nums = Array.from({ length: count }, (_, i) => start + i);
   const whites = nums.filter((n) => !isBlack(n));
   const pointers = useRef(new Map<number, number>());
+  const keyElements = useRef(new Map<number, HTMLButtonElement>());
+  const [requestedTabMidi, setRequestedTabMidi] = useState(60);
+  const tabMidi = nums.includes(requestedTabMidi) ? requestedTabMidi : nums[0];
+  const keyboardHeld = useRef(new Map<string, number>());
+  const assistiveTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
   const ref = useRef<HTMLDivElement>(null);
   const centeredRef = useRef(false);
   const whiteKeyWidth = useRef(29);
@@ -83,6 +91,83 @@ export const Piano = memo(function Piano({
     onUp("pointer" + pointerId);
     pointers.current.delete(pointerId);
   };
+  const focusKey = (midi: number) => {
+    setRequestedTabMidi(midi);
+    keyElements.current.get(midi)?.focus();
+  };
+  const releaseKeyboardKeys = () => {
+    for (const id of keyboardHeld.current.keys()) onUp(id);
+    keyboardHeld.current.clear();
+  };
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, midi: number) => {
+    const index = nums.indexOf(midi);
+    const targetMidi = event.key === "ArrowLeft" ? nums[Math.max(0, index - 1)]
+      : event.key === "ArrowRight" ? nums[Math.min(nums.length - 1, index + 1)]
+        : event.key === "ArrowUp" ? nums[Math.min(nums.length - 1, index + 12)]
+          : event.key === "ArrowDown" ? nums[Math.max(0, index - 12)]
+            : event.key === "Home" ? nums[0]
+              : event.key === "End" ? nums[nums.length - 1]
+                : undefined;
+    if (targetMidi !== undefined) {
+      event.preventDefault();
+      event.stopPropagation();
+      focusKey(targetMidi);
+      return;
+    }
+    if (event.key !== "Enter" && event.key !== " ") return;
+    // Space may already be the user's configured sustain shortcut. In that
+    // case, leave it to App's existing global pedal handler; Enter remains
+    // available to activate the focused piano key.
+    if (event.key === " " && keyboardPedal && event.code === keyboardPedal) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.repeat) return;
+    if (mappingMode) {
+      onSelect(midi);
+      return;
+    }
+    const id = `accessible:${midi}`;
+    if (keyboardHeld.current.has(id)) return;
+    keyboardHeld.current.set(id, midi);
+    onDown(id, midi);
+  };
+  const handleKeyUp = (event: React.KeyboardEvent<HTMLButtonElement>, midi: number) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (event.key === " " && keyboardPedal && event.code === keyboardPedal) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const id = `accessible:${midi}`;
+    if (!keyboardHeld.current.has(id)) return;
+    keyboardHeld.current.delete(id);
+    onUp(id);
+  };
+  const handleAssistiveClick = (event: React.MouseEvent<HTMLButtonElement>, midi: number) => {
+    // Pointer input already has press/release semantics in the parent. Only
+    // zero-detail activation (for example, a screen reader's button action)
+    // needs this fallback.
+    if (event.detail !== 0) return;
+    if (mappingMode) {
+      onSelect(midi);
+      return;
+    }
+    const oldTimer = assistiveTimers.current.get(midi);
+    if (oldTimer) clearTimeout(oldTimer);
+    const id = `assistive:${midi}`;
+    if (!oldTimer) onDown(id, midi);
+    assistiveTimers.current.set(midi, setTimeout(() => {
+      onUp(id);
+      assistiveTimers.current.delete(midi);
+    }, 140));
+  };
+  useEffect(() => () => {
+    releaseKeyboardKeys();
+    for (const [midi, timer] of assistiveTimers.current) {
+      clearTimeout(timer);
+      onUp(`assistive:${midi}`);
+    }
+    assistiveTimers.current.clear();
+    for (const pointerId of pointers.current.keys()) finishPointer(pointerId);
+  }, []);
   useEffect(() => {
     const root = ref.current!;
     const centerMappedRange = () => {
@@ -216,12 +301,29 @@ export const Piano = memo(function Piano({
           return (
             <button
               type="button"
-              tabIndex={-1}
-              aria-label={chordOverride ? `${noteName(n)}；${keyLabel(chordOverride.key)} 鍵目前演奏 ${chordOverride.chord} 和弦` : noteName(n)}
+              ref={(element) => {
+                if (element) keyElements.current.set(n, element);
+                else keyElements.current.delete(n);
+              }}
+              tabIndex={n === tabMidi ? 0 : -1}
+              aria-label={chordOverride
+                ? `${noteName(n)}；${keyLabel(chordOverride.key)} 鍵目前演奏 ${chordOverride.chord} 和弦`
+                : binding ? `${noteName(n)}，電腦鍵 ${shortcutLabel(binding)}` : noteName(n)}
               title={chordOverride ? `${noteName(n)} · ${keyLabel(chordOverride.key)} 目前演奏 ${chordOverride.chord} 和弦` : `${noteName(n)} · ${shortcutLabel(binding || "未綁定")}`}
               key={n}
               data-midi={n}
               className={`piano-key ${black ? "black" : "white"} ${bindingByMidi.has(n) ? "mapped" : ""} ${visibleActive.has(n) ? "pressed" : ""} ${expected.includes(n) ? "expected" : ""}`}
+              onFocus={() => setRequestedTabMidi(n)}
+              onBlur={releaseKeyboardKeys}
+              onKeyDown={(event) => handleKeyDown(event, n)}
+              onKeyUp={(event) => handleKeyUp(event, n)}
+              onClick={(event) => handleAssistiveClick(event, n)}
+              onMouseDown={(event) => {
+                // Keep desktop mouse playing from moving focus onto a key.
+                // Touch and pen retain native focus behavior; Tab can still
+                // enter the keyboard for accessible key activation.
+                event.preventDefault();
+              }}
               style={{
                 left: `${(wi - (black ? 0.32 : 0)) * width}%`,
                 width: `${width * (black ? 0.64 : 1)}%`,

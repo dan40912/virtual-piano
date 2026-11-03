@@ -8,6 +8,8 @@ html[data-large-key-labels="true"] .piano-key .key-binding { font-size: clamp(12
 html[data-high-contrast="true"] { --muted: #ccd0c7; --line: #8d9586; --text: #fffdf3; --gold: #f2d78e; }
 html[data-high-contrast="true"] :is(button, select, input) { border-color: #9b9e8e; }
 html[data-high-contrast="true"] .piano-key.expected { outline: 3px solid #145c92; outline-offset: -3px; }
+html[data-high-contrast="true"] .piano-key.white :is(.key-binding, .note-label) { color: #171914; text-shadow: none; }
+html[data-high-contrast="true"] .piano-key.black :is(.key-binding, .note-label) { color: #fffdf3; text-shadow: 0 1px 2px #000; }
 :is(button, summary, input, select):focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 @media (hover: none) and (pointer: coarse) {
   .stage-stepper button { min-width: 44px; width: 44px; min-height: 44px; height: 44px; }

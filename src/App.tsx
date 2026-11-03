@@ -1867,6 +1867,7 @@ export default function App() {
               swipeScrollEnabled={settings.keyboardSwipeScroll}
               chordMapping={settings.chordMapping}
               chordEnabled={settings.chordEnabled}
+              keyboardPedal={settings.pedal}
             />
             <div className="keyboard-zoom-control" aria-label="琴鍵大小與滑動設定">
               <RecordingIndicator recording={isRecording} />
