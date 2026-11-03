@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { createRoot, type Root } from "react-dom/client";
 import { player } from "../audio/PlaybackScheduler";
 import type { Song } from "../music/model";
+import { useSettings } from "../store";
 import { Roll } from "./Visuals";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -81,8 +82,75 @@ it("keeps one resize observer across position ticks and draws the latest positio
   container.remove();
 });
 
+it("draws distinct manual and automatic markers for short accessible Roll notes", async () => {
+  let resize: (() => void) | undefined;
+  class FakeResizeObserver {
+    constructor(callback: ResizeObserverCallback) { resize = () => callback([], this as unknown as ResizeObserver); }
+    observe() {}
+    disconnect() {}
+  }
+  vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+  const fills: { style: string; x: number; y: number; width: number; height: number }[] = [];
+  const arcs: { style: string; x: number; y: number; radius: number }[] = [];
+  const labels: string[] = [];
+  let fillStyle = "";
+  const context = {
+    setTransform: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(),
+    lineTo: vi.fn(), stroke: vi.fn(), fill: vi.fn(),
+    fillRect: vi.fn((x: number, y: number, width: number, height: number) => fills.push({ style: fillStyle, x, y, width, height })),
+    arc: vi.fn((x: number, y: number, radius: number) => arcs.push({ style: fillStyle, x, y, radius })),
+    fillText: vi.fn((text: string) => labels.push(text)), roundRect: vi.fn(),
+  };
+  Object.defineProperty(context, "fillStyle", {
+    get: () => fillStyle,
+    set: (value: string) => { fillStyle = value; },
+  });
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context as unknown as CanvasRenderingContext2D);
+  vi.spyOn(HTMLCanvasElement.prototype, "offsetWidth", "get").mockReturnValue(260);
+  vi.spyOn(HTMLCanvasElement.prototype, "offsetHeight", "get").mockReturnValue(120);
+  useSettings.getState().set({ notePalette: "accessible" });
+
+  const shortNotes: Song = {
+    ...song,
+    tracks: ["手彈", "自動"],
+    notes: [
+      { id: "manual-short", midi: 60, startTime: 0, duration: 0.01, velocity: 0.7, trackId: 0 },
+      { id: "auto-short", midi: 64, startTime: 0, duration: 0.01, velocity: 0.7, trackId: 1 },
+    ],
+  };
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root: Root = createRoot(container);
+  await act(async () => root.render(
+    <Roll
+      song={shortNotes}
+      transpose={0}
+      count={61}
+      zoom={60}
+      muted={[]}
+      scroll={0}
+      mapping={{}}
+      octave={0}
+      manual={false}
+      autoPolicy={{ 0: "manual", 1: "all" }}
+    />,
+  ));
+  await act(async () => resize?.());
+
+  // Both notes are only 4px tall in the Roll. Manual gets a left bar; automatic
+  // gets a right-side dot, so the distinction survives without color or text.
+  expect(fills.some((mark) => mark.style === "#fffdf3" && mark.width <= 2 && mark.height >= 1)).toBe(true);
+  expect(arcs.some((mark) => mark.style === "#211b0e" && mark.radius > 0 && mark.radius <= 2)).toBe(true);
+  expect(labels).not.toContain("手");
+  expect(labels).not.toContain("自");
+
+  await act(async () => root.unmount());
+  container.remove();
+});
+
 afterEach(() => {
   player.setPosition(0);
+  useSettings.getState().set({ notePalette: "gold" });
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });

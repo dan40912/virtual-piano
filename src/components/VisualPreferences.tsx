@@ -13,7 +13,7 @@ export function VisualPreferences() {
         <label><input type="checkbox" checked={large} onChange={(e) => set({ largeKeyLabels: e.target.checked })} />放大音名與按鍵標籤</label>
         <label><input type="checkbox" checked={contrast} onChange={(e) => set({ highContrast: e.target.checked })} />提高文字與控制項對比</label>
         <label><input type="checkbox" checked={palette === "accessible"} onChange={(e) => set({ notePalette: e.target.checked ? "accessible" : "gold" })} />清楚區分手彈與自動音符</label>
-        <small>手彈音符會加外框與「手」標示，顏色以外也能辨認。</small>
+        <small>手彈音符加外框與左側直線；自動音符加右側圓點。長音另有「手／自」標示。</small>
       </div>
     </details>
   );

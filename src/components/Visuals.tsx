@@ -41,6 +41,33 @@ function offsetFromStage(element: HTMLElement) {
   return { left, top };
 }
 
+/** Compact non-color marks that remain visible for very short Roll notes. */
+export function drawAccessibleNoteMarker(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  manualNote: boolean,
+) {
+  ctx.globalAlpha = 1;
+  if (manualNote) {
+    // A slim bar at the left edge marks notes the player supplies.
+    ctx.fillStyle = "#fffdf3";
+    const barWidth = Math.max(1, Math.min(2, width * 0.24));
+    const barHeight = Math.max(1, Math.min(6, height));
+    ctx.fillRect(x + 1, y + (height - barHeight) / 2, barWidth, barHeight);
+    return;
+  }
+
+  // A small right-side dot marks notes the app supplies.
+  ctx.fillStyle = "#211b0e";
+  const radius = Math.max(0.75, Math.min(2, width * 0.12, height * 0.45));
+  ctx.beginPath();
+  ctx.arc(x + width - radius - 1, y + height / 2, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 export function Roll({
   song,
   transpose,
@@ -227,7 +254,7 @@ export function Roll({
           : unit * (black ? 0.64 : 1);
         const policy = autoPolicy?.[n.trackId];
         const automatic = isAutomaticNote(policy, midi, splitPitch);
-        const manualNote = manual && (autoPolicy ? !automatic : true);
+        const manualNote = autoPolicy ? !automatic : manual;
         ctx.fillStyle = notePalette === "accessible"
           ? manualNote ? "#568fc4" : "#e0ad45"
           : autoPolicy
@@ -244,20 +271,27 @@ export function Roll({
           3,
         );
         ctx.fill();
-        if (notePalette === "accessible" && manualNote) {
-          ctx.globalAlpha = 1;
-          ctx.strokeStyle = "#e5f3ff";
-          ctx.lineWidth = 1;
-          ctx.stroke();
+        if (notePalette === "accessible") {
+          const noteX = x + horizontalInset;
+          const noteY = top;
+          const noteW = Math.max(2, noteWidth - horizontalInset * 2);
+          const noteH = Math.max(2, height - 2);
+          if (manualNote) {
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = "#e5f3ff";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+          drawAccessibleNoteMarker(ctx, noteX, noteY, noteW, noteH, manualNote);
           if (height > 16 && noteWidth > 19) {
-            ctx.fillStyle = "#fff";
+            ctx.fillStyle = manualNote ? "#fffdf3" : "#211b0e";
             ctx.font = "bold 8px sans-serif";
-            ctx.fillText("手", x + horizontalInset + 2, Math.max(9, top + 9));
+            ctx.fillText(manualNote ? "手" : "自", manualNote ? noteX + 2 : noteX + noteW - 9, Math.max(9, top + 9));
           }
         }
         const label = shortcuts.get(midi);
         const keyWidth = noteWidth - 6;
-        if (manual && label && height > 13 && keyWidth > 10) {
+        if ((notePalette === "accessible" ? manualNote : manual) && label && height > 13 && keyWidth > 10) {
           ctx.globalAlpha = 0.94;
           ctx.fillStyle = "#161811";
           ctx.font = `${Math.min(9, Math.max(6, unit * 0.25))}px monospace`;
