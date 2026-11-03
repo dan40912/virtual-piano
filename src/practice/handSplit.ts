@@ -1,3 +1,5 @@
+import type { Note } from "../music/model";
+
 export type AutoPolicy = "all" | "bass" | "treble" | "manual";
 export const DEFAULT_SPLIT_PITCH = 60;
 
@@ -11,6 +13,21 @@ export function isAutomaticNote(
   if (policy === "bass") return midi <= splitPitch;
   if (policy === "treble") return midi > splitPitch;
   return false;
+}
+
+/** Shared scheduler decision: split against the transposed sounding pitch. */
+export function shouldAutoPlayNote(
+  note: Note,
+  accompanimentMode: boolean,
+  policies: Record<number, AutoPolicy>,
+  transpose: number,
+  splitPitch = DEFAULT_SPLIT_PITCH,
+) {
+  return !accompanimentMode || isAutomaticNote(
+    policies[note.trackId],
+    note.midi + transpose,
+    splitPitch,
+  );
 }
 
 export function shouldMarkRollManual(

@@ -31,6 +31,7 @@ vi.mock("tone", () => ({
 vi.mock("./PianoEngine", () => ({ engine: mocks.engine }));
 import { PlaybackScheduler } from "./PlaybackScheduler";
 import type { Song } from "../music/model";
+import { shouldAutoPlayNote } from "../practice/handSplit";
 const song: Song = {
   title: "test",
   source: "test",
@@ -104,6 +105,54 @@ describe("audio clock scheduler", () => {
     mocks.events.find((e) => e.time === 0.5)!.fn(10.5);
     expect(mocks.engine.attack).toHaveBeenCalledWith("autoa", 60, 0.6, 10.5);
     expect(mocks.events.filter((e) => e.time === 0.5)).toHaveLength(1);
+  });
+  it("integrates accompaniment split, sounding transpose, mute, and A/B bounds", () => {
+    const accompanimentSong: Song = {
+      ...song,
+      tracks: ["Bass", "Treble", "Muted"],
+      duration: 5,
+      pedals: [
+        { time: 0.3, down: true, trackId: 2 },
+        { time: 0.8, down: false, trackId: 2 },
+      ],
+      notes: [
+        { id: "before-a-outside", midi: 58, startTime: 0.2, duration: 0.2, velocity: 0.5, trackId: 0 },
+        { id: "overlap-a", midi: 58, startTime: 0.5, duration: 1, velocity: 0.5, trackId: 0 },
+        { id: "bass-boundary", midi: 58, startTime: 1, duration: 1, velocity: 0.6, trackId: 0 },
+        { id: "bass-above", midi: 59, startTime: 1.5, duration: 0.5, velocity: 0.6, trackId: 0 },
+        { id: "treble-boundary", midi: 58, startTime: 2, duration: 0.5, velocity: 0.7, trackId: 1 },
+        { id: "treble-above", midi: 59, startTime: 2.5, duration: 0.5, velocity: 0.7, trackId: 1 },
+        { id: "muted-all", midi: 60, startTime: 3, duration: 0.5, velocity: 0.8, trackId: 2 },
+        { id: "before-b", midi: 62, startTime: 3.9, duration: 0.5, velocity: 0.8, trackId: 1 },
+        { id: "at-b", midi: 70, startTime: 4, duration: 0.5, velocity: 0.8, trackId: 1 },
+      ],
+    };
+    const p = new PlaybackScheduler();
+    p.loop = true;
+    p.a = 1;
+    p.b = 4;
+    p.transpose = 2;
+    p.muted = [2];
+    p.noteFilter = (note) => shouldAutoPlayNote(
+      note,
+      true,
+      { 0: "bass", 1: "treble", 2: "all" },
+      p.transpose,
+      60,
+    );
+
+    p.start(accompanimentSong);
+    expect(mocks.transport).toHaveProperty("loopEnd", 3);
+    expect(mocks.events.every((event) => event.time < 3)).toBe(true);
+    mocks.events.forEach((event) => event.fn(10 + event.time));
+
+    expect(mocks.engine.attack.mock.calls.map(([id, midi]) => [id, midi])).toEqual([
+      ["autooverlap-a", 60],
+      ["autobass-boundary", 60],
+      ["autotreble-above", 61],
+      ["autobefore-b", 64],
+    ]);
+    expect(mocks.engine.sustain.mock.calls.some(([down]) => down === true)).toBe(false);
   });
   it("seek resumes notes spanning the seek position", () => {
     const p = new PlaybackScheduler();

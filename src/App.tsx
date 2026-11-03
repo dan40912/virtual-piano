@@ -49,7 +49,7 @@ import {
   writeSongPreferences,
   type SongPracticePreferences,
 } from "./practice/songPreferences";
-import { DEFAULT_SPLIT_PITCH, isAutomaticNote, shouldMarkRollManual, type AutoPolicy } from "./practice/handSplit";
+import { DEFAULT_SPLIT_PITCH, isAutomaticNote, shouldAutoPlayNote, shouldMarkRollManual, type AutoPolicy } from "./practice/handSplit";
 import {
   mostMissedSoundingPitch,
   practiceProgressResetPosition,
@@ -745,11 +745,7 @@ export default function App() {
     setStage("poster");
   };
   const noteIsAuto = useCallback(
-    (note: Note) => {
-      if (mode !== "accompaniment") return true;
-      const policy = autoPolicy[note.trackId];
-      return isAutomaticNote(policy, note.midi + transpose, splitPitch);
-    },
+    (note: Note) => shouldAutoPlayNote(note, mode === "accompaniment", autoPolicy, transpose, splitPitch),
     [mode, autoPolicy, transpose, splitPitch],
   );
   const audition = async () => {
